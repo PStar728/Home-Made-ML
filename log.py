@@ -22,7 +22,7 @@ def Write_To_xlsx(EpochNum, ErrorList):
     sheet = wb["Temp Dump"]
     
     # formatting
-    sheet.append([f"Epoch {EpochNum + 1}", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "Quality", "Prediction", "Error"])
+    sheet.append([f"Epoch {EpochNum + 1}", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "Bias", "Quality", "Prediction", "Error"])
     
     # adds the data
     with open(file_path_txt, "r") as txt:
@@ -48,7 +48,7 @@ def Write_To_xlsx(EpochNum, ErrorList):
     wb.save(file_path_xlsx)
 
     
-def Write_To_txt(Weights, DataPoint, Quality, Error):
+def Write_To_txt(Weights, Bias, DataPoint, Quality, Error):
     file_path = "Temp_Holder.txt"
     
     with open(file_path, "a") as f:
@@ -56,7 +56,7 @@ def Write_To_txt(Weights, DataPoint, Quality, Error):
         prediction = Quality - Error
         
         f.write(
-            f"{DataPoint}, {weights_str}, {Quality}, {prediction}, {Error}\n"
+            f"{DataPoint}, {weights_str}, {Bias}, {Quality}, {prediction}, {Error}\n"
         ) 
 
 def Calculate_Epoch_Data(EpochNum, ErrorList):
