@@ -37,8 +37,8 @@ def sigmoid(number):
 def TotalRescale(InitialBounds, FinalBounds, number):
     return FinalBounds[0] + ((number - InitialBounds[0]) / (InitialBounds[1] - InitialBounds[0])) * (FinalBounds[1] - FinalBounds[0])
 
-def Calc_Learning_Rate(error):
-    LR = ((error * 4) ** 2) *.01
+def Calc_Learning_Rate(AvgError, BaselineError, Base_LR):
+    LR = ((AvgError / BaselineError) ** 2) * Base_LR
     LR = min(LR, .5)
     return LR
 
@@ -58,9 +58,9 @@ def train_bias(Bias, error, Learning_Rate):
     Bias += Learning_Rate * error
     return Bias
 
-def train_model(Data, Weights, Bias):
+def train_model(Data, Weights, Bias, AvgError, BaselineError, Base_LR = .005):
     error = predict(Data, Weights, Bias)
-    Learning_Rate = Calc_Learning_Rate(error)
+    Learning_Rate = Calc_Learning_Rate(AvgError, BaselineError, Base_LR)
     Weights = train_weights(Data, Weights, error, Learning_Rate)
     Bias = train_bias(Bias, error, Learning_Rate)
     return error, Weights, Bias

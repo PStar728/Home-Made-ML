@@ -100,3 +100,11 @@ def Calculate_Epoch_Data(EpochNum, ErrorList):
         mean,
         stdv
     ]
+def Log_Test_Data(testErrors):
+    file_path = "ML_log.xlsx"
+
+    wb = load_workbook(file_path)
+    sheet = wb["Epoch Data"]
+
+    sheet.append(testErrors)
+    wb.save(file_path)

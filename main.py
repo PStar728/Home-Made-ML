@@ -1,4 +1,5 @@
 from data import DataSet
+from Test import Test
 import model
 import log
 
@@ -8,25 +9,31 @@ Bias = model.load_bias()
 
 print(f"Initial weights: {Weights}")
 print("Loading data...")
+
+dataStart = 100
+dataEnd = 200
+
 DATA = DataSet()
-DATA.load_from_csv("winequality-red.csv", 100, 200)
+DATA.load_from_csv("winequality-red.csv", dataStart, dataEnd)
 print(f"Loaded {len(DATA.samples)} samples\n")
 
 epochs = int(input("How many times should I train with this dataset? "))
 EpochNum = 0
 ErrorList = []
 AvgErrorList = []
+AvgError = 0.5
+BaselineError = .4
 
 for epoch in range(epochs):
     print(f"--- Epoch {epoch + 1} ---")
     Display = log.Display_Check(epoch + 1)
     for i, point in enumerate(DATA.samples, 1):
-        error, Weights, Bias = model.train_model(point, Weights, Bias)
+        error, Weights, Bias = model.train_model(point, Weights, Bias, AvgError, BaselineError)
         print(f"  Sample {i}: Quality={point.quality}, Error={error:.4f}")
 
         # Calcs the recent avg error for LR
         AvgErrorList.append(abs(error))
-        if AvgErrorList.len > 20:
+        if len(AvgErrorList) > 20:
             AvgErrorList.pop(0)
         AvgError = sum(AvgErrorList) / len(AvgErrorList)
 
@@ -42,6 +49,7 @@ for epoch in range(epochs):
     if Display:
         log.Write_To_xlsx(epoch, ErrorList)
         # clear .txt file
+        BaselineError = max((sum(ErrorList) / len(ErrorList)) - 0.1, 0.25)
         ErrorList = []
         with open("Temp_Holder.txt", "w") as f:
             f.write("")
@@ -53,5 +61,7 @@ model.save_bias(Bias)
 
 print("\n=== Training Complete ===")
 print(f"Final weights: {Weights}")
+
+Test(dataStart, dataEnd, Weights, Bias)
 
 
