@@ -1,6 +1,6 @@
 from data import DataSet
 from model import predict
-from log import Calculate_Epoch_Data, Log_Test_Data
+from log import Calculate_Epoch_Data, Log_Tests
 
 def Test(dataStart, dataEnd, Weights, Bias):
     TESTDATA = DataSet()
@@ -11,8 +11,8 @@ def Test(dataStart, dataEnd, Weights, Bias):
     for point in TESTDATA.samples:
         testErrors.append(predict(point, Weights, Bias))
 
-    Calculate_Epoch_Data("Test", testErrors)
-    Log_Test_Data()
+    testsLine = Calculate_Epoch_Data("Test", testErrors)
+    Log_Tests(testsLine)
 
 
 

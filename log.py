@@ -100,7 +100,7 @@ def Calculate_Epoch_Data(EpochNum, ErrorList):
         mean,
         stdv
     ]
-def Log_Test_Data(testErrors):
+def Log_Tests(testErrors):
     file_path = "ML_log.xlsx"
 
     wb = load_workbook(file_path)
