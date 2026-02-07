@@ -22,7 +22,7 @@ class DataSet:
 
         self.average_point = DataPoint(avg_inputs, avg_quality)    
         
-    def Rescale(self, Value, Upper_bound, Lower_bound):
+    def Normalize(self, Value, Upper_bound, Lower_bound):
         return (Value - Lower_bound) / (Upper_bound - Lower_bound)
 
     def load_from_csv(self, file_path, start, end = None):
@@ -35,17 +35,40 @@ class DataSet:
                 if (end is not None and i >= end):
                     break
                 inputs = [
-                    self.Rescale(float(row['fixed acidity']), 15.9, 4.6),
-                    self.Rescale(float(row['volatile acidity']), 1.58, 0.12),
-                    self.Rescale(float(row['citric acid']), 1.66, 0),
-                    self.Rescale(float(row['residual sugar']), 15.5, 0.9),
-                    self.Rescale(float(row['chlorides']), .611, .012),
-                    self.Rescale(float(row['free sulfur dioxide']), 72, 1),
-                    self.Rescale(float(row['total sulfur dioxide']), 289, 6),
-                    self.Rescale(float(row['density']), 1.0037, .9901),
-                    self.Rescale(float(row['pH']), 4.01, 2.74),
-                    self.Rescale(float(row['sulphates']), 2, .33),
-                    self.Rescale(float(row['alcohol']), 14.9, 8.4)
+                    self.Normalize(float(row['fixed acidity']), 15.9, 4.6),             # P1
+                    self.Normalize(float(row['fixed acidity']), 15.9, 4.6) ** 2,        # P1^2
+                    self.Normalize(float(row['fixed acidity']), 15.9, 4.6) ** 0.5,      # SQRT(P1)
+                    self.Normalize(float(row['volatile acidity']), 1.58, 0.12),         # P2
+                    #self.Normalize(float(row['volatile acidity']), 1.58, 0.12) ** 2,                           # P2^2
+                    #self.Normalize(float(row['volatile acidity']), 1.58, 0.12) ** 0.5,                         # SQRT(P2)
+                    self.Normalize(float(row['citric acid']), 1.66, 0),                 # P3
+                    self.Normalize(float(row['citric acid']), 1.66, 0) ** 2,            # P3^2
+                    #self.Normalize(float(row['citric acid']), 1.66, 0) ** 0.5,                                 # SQRT(P3)
+                    self.Normalize(float(row['residual sugar']), 15.5, 0.9),            # P4
+                    self.Normalize(float(row['residual sugar']), 15.5, 0.9) ** 2,       # P4^2
+                    #self.Normalize(float(row['residual sugar']), 15.5, 0.9) ** 0.5,                            # SQRT(P4)
+                    self.Normalize(float(row['chlorides']), .611, .012),                # P5
+                    self.Normalize(float(row['chlorides']), .611, .012) ** 2,           # P5^2
+                    #self.Normalize(float(row['chlorides']), .611, .012) ** 0.5,                                # SQRT(P5)
+                    self.Normalize(float(row['free sulfur dioxide']), 72, 1),           # P6
+                    #self.Normalize(float(row['free sulfur dioxide']), 72, 1) ** 2,                             # P6^2
+                    self.Normalize(float(row['free sulfur dioxide']), 72, 1) ** 0.5,    # SQRT(P6)
+                    self.Normalize(float(row['total sulfur dioxide']), 289, 6),         # P7
+                    self.Normalize(float(row['total sulfur dioxide']), 289, 6) ** 2,    # P7^2
+                    self.Normalize(float(row['total sulfur dioxide']), 289, 6) ** 0.5,  # SQRT(P7)
+                    self.Normalize(float(row['density']), 1.0037, .9901),               # P8
+                    #self.Normalize(float(row['density']), 1.0037, .9901) ** 2,                                 # P8^2
+                    self.Normalize(float(row['density']), 1.0037, .9901) ** 0.5,        # SQRT(P8)
+                    self.Normalize(float(row['pH']), 4.01, 2.74),                       # P9
+                    self.Normalize(float(row['pH']), 4.01, 2.74) ** 2,                  # P9^2
+                    #self.Normalize(float(row['pH']), 4.01, 2.74) ** 0.5,                                       # SQRT(P9)
+                    self.Normalize(float(row['sulphates']), 2, .33),                    # P10
+                    self.Normalize(float(row['sulphates']), 2, .33) ** 2,               # P10^2
+                    self.Normalize(float(row['sulphates']), 2, .33) ** 0.5,             # SQRT(P10)
+                    self.Normalize(float(row['alcohol']), 14.9, 8.4),                   # P11
+                    self.Normalize(float(row['alcohol']), 14.9, 8.4) ** 2               # P11^2
+                    #self.Normalize(float(row['alcohol']), 14.9, 8.4) ** 0.5                                    # SQRT(P11)
+
                 ]
                 quality = int(row['quality'])
                 self.samples.append(DataPoint(inputs, quality)) 

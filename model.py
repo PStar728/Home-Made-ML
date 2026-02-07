@@ -13,15 +13,19 @@ def load_bias():
         bias = 0
     return bias
 
-def load_weights():
-    weights = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+def load_weights(N_parameters, start=0.1):
     try:
         with open(weights_file) as f:
+
             loaded_weights = json.load(f)
-            weights = loaded_weights
+            if len(loaded_weights) == N_parameters:
+                return loaded_weights
+
     except FileNotFoundError:
-        weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    return weights
+        return [0] * N_parameters
+
+    return [start] * N_parameters
 
 def save_bias(bias):
     with open(bias_file, "w") as f:

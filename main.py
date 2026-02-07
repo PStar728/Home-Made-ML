@@ -4,18 +4,18 @@ import model
 import log
 
 print("=== ML Training Session ===")
-Weights = model.load_weights()
-Bias = model.load_bias()
-
-print(f"Initial weights: {Weights}")
-print("Loading data...")
-
 dataStart = 100
 dataEnd = 200
 
 DATA = DataSet()
 DATA.load_from_csv("winequality-red.csv", dataStart, dataEnd)
 print(f"Loaded {len(DATA.samples)} samples\n")
+
+Weights = model.load_weights(len(DATA.samples[0].inputs))
+Bias = model.load_bias()
+
+print(f"Initial weights: {Weights}")
+print("Loading data...")
 
 epochs = int(input("How many times should I train with this dataset? "))
 EpochNum = 0
