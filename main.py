@@ -26,8 +26,11 @@ AvgErrorList = []
 AvgError = 0.5
 BaselineError = .4
 prevError = 100
-prevWeights = None
-prevBias = None
+bestWeights = None
+bestBias = None
+strikes = 0
+patience = 3
+bestError = float('inf')
 
 for epoch in range(epochs):
     print(f"--- Epoch {epoch + 1} ---")
@@ -61,14 +64,26 @@ for epoch in range(epochs):
 
         if EpochNum >= 50:
             testData = Test(dataStart, dataEnd, Weights, Bias)
-            if testData[8] > prevError:
-                Weights = prevWeights
-                Bias = prevBias
-                testData = Test(dataStart, dataEnd, Weights, Bias)
-                break
-            prevError = testData[8]
-            prevWeights = copy.deepcopy(Weights)
-            prevBias = copy.deepcopy(Bias)
+            currentError = testData[8]
+
+            if currentError < bestError:
+                # NEW BEST! Save and reset
+                bestError = currentError
+                bestWeights = copy.deepcopy(Weights)
+                bestBias = copy.deepcopy(Bias)
+                strikes = 0
+                print(f"✓ New best: {currentError:.4f}")
+
+            else:
+                # Didn't beat best
+                strikes += 1
+                print(f"✗ No improvement: {currentError:.4f} (strike {strikes}/{patience})")
+
+                if strikes >= patience:
+                    Weights = copy.deepcopy(bestWeights)
+                    Bias = copy.deepcopy(bestBias)
+                    print(f"Early stopping! Restored best: {bestError:.4f}")
+                    break
 
             
 model.save_weights(Weights)
