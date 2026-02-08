@@ -1,3 +1,5 @@
+import copy
+
 from data import DataSet
 from Test import Test
 import model
@@ -23,6 +25,9 @@ ErrorList = []
 AvgErrorList = []
 AvgError = 0.5
 BaselineError = .4
+prevError = 100
+prevWeights = None
+prevBias = None
 
 for epoch in range(epochs):
     print(f"--- Epoch {epoch + 1} ---")
@@ -53,8 +58,18 @@ for epoch in range(epochs):
         ErrorList = []
         with open("Temp_Holder.txt", "w") as f:
             f.write("")
-            
-    
+
+        if EpochNum >= 50:
+            testData = Test(dataStart, dataEnd, Weights, Bias)
+            if testData[8] > prevError:
+                Weights = prevWeights
+                Bias = prevBias
+                testData = Test(dataStart, dataEnd, Weights, Bias)
+                break
+            prevError = testData[8]
+            prevWeights = copy.deepcopy(Weights)
+            prevBias = copy.deepcopy(Bias)
+
             
 model.save_weights(Weights)
 model.save_bias(Bias)
