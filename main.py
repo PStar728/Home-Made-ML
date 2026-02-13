@@ -5,7 +5,7 @@ from Test import Test
 import model
 import log
 
-log.Save_Close_Open("ML_log.xlsx");
+log.Save_Close("ML_log.xlsx")
 
 print("=== ML Training Session ===")
 dataStart = 100
@@ -21,7 +21,7 @@ Bias = model.load_bias()
 print(f"Initial weights: {Weights}")
 print("Loading data...")
 
-epochs = int(input("How many times should I train with this dataset? "))
+#epochs = int(input("How many times should I train with this dataset? "))
 ErrorList = []
 AvgErrorList = []
 AvgError = 0.5
@@ -30,14 +30,14 @@ prevError = 100
 bestWeights = None
 bestBias = None
 strikes = 0
-patience = 3
+patience = 2
 bestError = float('inf')
 
 epoch = 0
-while True:
-    epoch +=1
-    print(f"--- Epoch {epoch + 1} ---")
-    Display = log.Display_Check(epoch + 1)
+runner = True
+while runner:
+    print(f"--- Epoch {epoch} ---")
+    Display = log.Display_Check(epoch)
     for i, point in enumerate(DATA.samples, 1):
         error, Weights, Bias = model.train_model(point, Weights, Bias, AvgError, BaselineError)
         print(f"  Sample {i}: Quality={point.quality}, Error={error:.4f}")
@@ -87,6 +87,8 @@ while True:
                     Bias = copy.deepcopy(bestBias)
                     print(f"Early stopping! Restored best: {bestError:.4f}")
                     break
+    epoch += 1
+
 
             
 model.save_weights(Weights)

@@ -23,7 +23,7 @@ def Write_To_xlsx(EpochNum, ErrorList):
     sheet = wb["Temp Dump"]
     
     # formatting
-    sheet.append([f"Epoch {EpochNum + 1}", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "Bias", "Quality", "Prediction", "Error"])
+    sheet.append([f"Epoch {EpochNum}", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "Bias", "Quality", "Prediction", "Error"])
     
     # adds the data
     with open(file_path_txt, "r") as txt:
@@ -36,12 +36,12 @@ def Write_To_xlsx(EpochNum, ErrorList):
                 columns[i] = float(columns[i])
             sheet.append(columns)
 
-    Epoch_Data_Line = Calculate_Epoch_Data((EpochNum + 1), ErrorList)
+    Epoch_Data_Line = Calculate_Epoch_Data((EpochNum), ErrorList)
 
     sheet = wb["Epoch Data"]
 
     # formatting
-    if EpochNum == 0:
+    if EpochNum == 1:
         sheet.append([f"Epoch #", "Min Error", "Quartile 1", "Median Error", "Quartile 3", "Max Error", "IQR", "Error Range", "Mean Error", "STDV"])
 
     sheet.append(Epoch_Data_Line)
@@ -113,18 +113,20 @@ def Log_Tests(testErrors):
 def Open_xlsm(file_path):
     subprocess.call(["open", file_path])
 
-def Save_Close_Open(file_path):
+
+def Save_Close(file_path):
+    """Save and close an Excel workbook on macOS using AppleScript."""
+    file_name = os.path.basename(file_path)
+
     script = f'''
     tell application "Microsoft Excel"
         if it is running then
-            repeat with wb in workbooks
-                if (full name of wb) is "{file_path}" then
-                    save wb
-                    close wb
-                end if
-            end repeat
+            if (name of workbooks) contains "{file_name}" then
+                save workbook "{file_name}"
+                close workbook "{file_name}"
+            end if
         end if
     end tell
     '''
 
-    subprocess.run(["osascript", "-e", script])
+    subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
