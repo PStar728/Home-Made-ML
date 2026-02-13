@@ -5,6 +5,8 @@ from Test import Test
 import model
 import log
 
+log.Save_Close_Open("ML_log.xlsx");
+
 print("=== ML Training Session ===")
 dataStart = 100
 dataEnd = 200
@@ -20,7 +22,6 @@ print(f"Initial weights: {Weights}")
 print("Loading data...")
 
 epochs = int(input("How many times should I train with this dataset? "))
-EpochNum = 0
 ErrorList = []
 AvgErrorList = []
 AvgError = 0.5
@@ -32,7 +33,9 @@ strikes = 0
 patience = 3
 bestError = float('inf')
 
-for epoch in range(epochs):
+epoch = 0
+while True:
+    epoch +=1
     print(f"--- Epoch {epoch + 1} ---")
     Display = log.Display_Check(epoch + 1)
     for i, point in enumerate(DATA.samples, 1):
@@ -62,7 +65,7 @@ for epoch in range(epochs):
         with open("Temp_Holder.txt", "w") as f:
             f.write("")
 
-        if EpochNum >= 50:
+        if epoch >= 50:
             testData = Test(dataStart, dataEnd, Weights, Bias)
             currentError = testData[8]
 
@@ -93,5 +96,7 @@ print("\n=== Training Complete ===")
 print(f"Final weights: {Weights}")
 
 Test(dataStart, dataEnd, Weights, Bias)
+
+log.Open_xlsm("ML_log.xlsx")
 
 

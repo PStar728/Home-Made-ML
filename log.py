@@ -1,6 +1,7 @@
 from openpyxl import Workbook, load_workbook
 from datetime import datetime
 import os
+import subprocess
 
 # checks if epoch number == (1, 2, 5, 10, 20, 50...)
 def Display_Check(Epoch):
@@ -108,3 +109,22 @@ def Log_Tests(testErrors):
 
     sheet.append(testErrors)
     wb.save(file_path)
+
+def Open_xlsm(file_path):
+    subprocess.call(["open", file_path])
+
+def Save_Close_Open(file_path):
+    script = f'''
+    tell application "Microsoft Excel"
+        if it is running then
+            repeat with wb in workbooks
+                if (full name of wb) is "{file_path}" then
+                    save wb
+                    close wb
+                end if
+            end repeat
+        end if
+    end tell
+    '''
+
+    subprocess.run(["osascript", "-e", script])
