@@ -32,15 +32,15 @@ bestBias = None
 strikes = 0
 patience = 2
 bestError = float('inf')
+currentError = 0
 
 epoch = 0
-runner = True
-while runner:
-    print(f"--- Epoch {epoch} ---")
+while epoch + 1:# < 100000:
+    #print(f"--- Epoch {epoch} ---")
     Display = log.Display_Check(epoch)
     for i, point in enumerate(DATA.samples, 1):
-        error, Weights, Bias = model.train_model(point, Weights, Bias, AvgError, BaselineError)
-        print(f"  Sample {i}: Quality={point.quality}, Error={error:.4f}")
+        error, Weights, Bias = model.train_model(point, Weights, Bias, AvgError, BaselineError, currentError)
+        # print(f"  Sample {i}: Quality={point.quality}, Error={error:.4f}")
 
         # Calcs the recent avg error for LR
         AvgErrorList.append(abs(error))
@@ -55,7 +55,7 @@ while runner:
             ErrorList.append(error)
             # pass array into write to xlsx to compute correct datas
             log.Write_To_txt(Weights, Bias, i, point.quality, error)
-    print()
+    # print()
     # write to ML Log.xlsx
     if Display:
         log.Write_To_xlsx(epoch, ErrorList)
@@ -65,31 +65,31 @@ while runner:
         with open("Temp_Holder.txt", "w") as f:
             f.write("")
 
-        if epoch >= 50:
-            testData = Test(dataStart, dataEnd, Weights, Bias)
-            currentError = testData[8]
+        testData = Test(dataStart, dataEnd, Weights, Bias)
+        currentError = testData[8]
 
-            if currentError < bestError:
-                # NEW BEST! Save and reset
-                bestError = currentError
-                bestWeights = copy.deepcopy(Weights)
-                bestBias = copy.deepcopy(Bias)
-                strikes = 0
-                print(f"✓ New best: {currentError:.4f}")
+        print(f"Epoch: {epoch}")
+        if currentError < bestError:
+            # NEW BEST! Save and reset
+            bestError = currentError
+            bestWeights = copy.deepcopy(Weights)
+            bestBias = copy.deepcopy(Bias)
+            strikes = 0
 
-            else:
-                # Didn't beat best
+            print(f"✓ New best: {currentError:.4f}")
+
+        else:
+            # Didn't beat best
+            if epoch > 100:
                 strikes += 1
-                print(f"✗ No improvement: {currentError:.4f} (strike {strikes}/{patience})")
+            print(f"✗ No improvement: {currentError:.4f} (strike {strikes}/{patience})")
 
-                if strikes >= patience:
-                    Weights = copy.deepcopy(bestWeights)
-                    Bias = copy.deepcopy(bestBias)
-                    print(f"Early stopping! Restored best: {bestError:.4f}")
-                    break
+            if strikes >= patience:
+                Weights = copy.deepcopy(bestWeights)
+                Bias = copy.deepcopy(bestBias)
+                print(f"Early stopping! Restored best: {bestError:.4f}")
+                break
     epoch += 1
-
-
             
 model.save_weights(Weights)
 model.save_bias(Bias)
@@ -100,5 +100,3 @@ print(f"Final weights: {Weights}")
 Test(dataStart, dataEnd, Weights, Bias)
 
 log.Open_xlsm("ML_log.xlsx")
-
-

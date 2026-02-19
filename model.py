@@ -1,5 +1,6 @@
 import math
 import json
+import numpy as np
 
 weights_file = "weights.json"
 bias_file = "bias.json"
@@ -46,6 +47,25 @@ def Calc_Learning_Rate(AvgError, BaselineError, Base_LR):
     LR = min(LR, .5)
     return LR
 
+def Calc_Lambda(AvgError, testError):
+    if testError == 0:
+        return .05
+
+    errorDiff = testError - AvgError
+
+    x = min(errorDiff, 0.5)  # Cap at 0.5
+
+    if x <= 0.1:
+        return 0.0
+    elif x <= 0.2:
+        return 0.001 * (x - 0.1) / 0.1  # 0 to 0.001
+    elif x <= 0.3:
+        return 0.001 + 0.009 * (x - 0.2) / 0.1  # 0.001 to 0.01
+    elif x <= 0.4:
+        return 0.01 + 0.04 * (x - 0.3) / 0.1  # 0.01 to 0.05
+    else:  # 0.4 to 0.5
+        return 0.05 + 0.05 * (x - 0.4) / 0.1  # 0.05 to 0.1
+
 def predict(Data, Weights, Bias):
     # Data is one datapoint!! Not entire data set
     score = sum(num * weight for num, weight in zip(Data.inputs, Weights))
@@ -53,18 +73,32 @@ def predict(Data, Weights, Bias):
     error = Data.quality - prediction
     return error
 
-def train_weights(Data, Weights, error, Learning_Rate):
+def train_weights(Data, Weights, error, Learning_Rate, Lambda):
     for i, x in enumerate(Data.inputs):
-        Weights[i] += Learning_Rate * x * error
+        errorUpdate = Learning_Rate * x * error
+
+        regL1 = (Lambda * np.sign(Weights[i]) * Learning_Rate)
+        #regL2 = ((Lambda * 0.001) * (Weights[i] ** 2) * Learning_Rate)
+
+
+        Weights[i] += errorUpdate - regL1
+
+        # this is the original function not needed RN but keep it
+        # the derivitive of this is used for the term1 and term2
+        #  regularize = ((1 - regSig) * abs(Weights[i])) + (regSig * Weights[i] ** 2)
     return Weights
+
+def sigmoid(number):
+    return 1 / (1 + math.exp( -number))
 
 def train_bias(Bias, error, Learning_Rate):
     Bias += Learning_Rate * error
     return Bias
 
-def train_model(Data, Weights, Bias, AvgError, BaselineError, Base_LR = .005):
+def train_model(Data, Weights, Bias, AvgError, BaselineError, testError, Base_LR = .005):
     error = predict(Data, Weights, Bias)
     Learning_Rate = Calc_Learning_Rate(AvgError, BaselineError, Base_LR)
-    Weights = train_weights(Data, Weights, error, Learning_Rate)
+    Lambda = Calc_Lambda(AvgError, testError)
+    Weights = train_weights(Data, Weights, error, Learning_Rate, Lambda)
     Bias = train_bias(Bias, error, Learning_Rate)
     return error, Weights, Bias
