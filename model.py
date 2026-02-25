@@ -10,7 +10,7 @@ def load_bias():
     try:
         with open(bias_file, "r") as f:
             bias = json.load(f)
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError):
         bias = 0
     return bias
 
@@ -23,7 +23,7 @@ def load_weights(N_parameters, start=0.1):
             if len(loaded_weights) == N_parameters:
                 return loaded_weights
 
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError):
         return [0] * N_parameters
 
     return [start] * N_parameters
