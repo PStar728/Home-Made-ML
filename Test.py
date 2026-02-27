@@ -20,6 +20,3 @@ def Test(dataStart, dataEnd, Weights, Bias):
     testsLine = Calculate_Epoch_Data("Test", testErrors)
     Log_Tests(testsLine)
     return testsLine
-
-
-
