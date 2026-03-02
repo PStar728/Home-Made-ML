@@ -4,96 +4,120 @@ from data import DataSet
 from Test import Test
 import model
 import log
+import numpy as np
 
 #saves and closes ML_log.xlsx
 log.Save_Close("ML_log.xlsx")
 
 #defines training data points
 print("=== ML Training Session ===")
-dataStart = 0
-dataEnd = 1200
-DATA = DataSet()
+dataStart: int = 0
+dataEnd: int = 1200
+DATA:DataSet = DataSet()
 DATA.load_from_csv("winequality-red.csv", dataStart, dataEnd)
+
 print(f"Loaded {len(DATA.samples)} samples\n")
 
 #defines weights and biases
-Weights = model.load_weights(len(DATA.samples[0].inputs))
-Bias = model.load_bias()
+Weights: list = model.load_weights(len(DATA.samples[0].inputs))
+Bias: list = model.load_bias()
 
 print(f"Initial weights: {Weights}")
 print("Loading data...")
 
 #epochs = int(input("How many times should I train with this dataset? "))
 
+# redefines as a numpy matrix
+Inputs: np.ndarray = np.array([dp.inputs for dp in DATA.samples])
+Quality: np.ndarray = np.array([dp.quality for dp in DATA.samples])
+matWeights: np.ndarray = np.array(Weights)
+matBias: np.ndarray = np.array(Bias)
+matError: np.ndarray = np.array(None)
+
 #initializes variables for the main
-ErrorList = []
-AvgErrorList = []
-AvgError = 0.5
-BaselineError = .4
-prevError = 100
-bestWeights = None
-bestBias = None
-strikes = 0
-patience = 2
-bestError = float('inf')
-currentError = 0
+ErrorList: list = []
+AvgErrorList: list = []
+prevError: float = 0.5
+BaselineError: float = .4
+bestWeights: list = None
+bestBias: list = None
+strikes: int = 0
+patience: int = 2
+bestError: float = float('inf')
+currentTestError: float = 0
 
 #starts the main loop
 #loop define to be inf. until the comment is deleted
-epoch = 0
-while epoch + 1:# < 100000:
+epoch: int = 1
+while epoch < 5000:
     #print(f"--- Epoch {epoch} ---")
 
     # Display checks if epoch == (1, 2, 5, 10, 20, 50, 100...)
-    # Display is used for thing that should only be done periodically not every epoch
+    # Display is used for anything that should only be done periodically not every epoch
     Display = log.Display_Check(epoch)
 
+    matError, matWeights, matBias = model.train_model(Inputs, Quality, matWeights, matBias, prevError, BaselineError, currentTestError)
+    prevError = np.average(matError)
+    log.Write_To_TempData((dataEnd - dataStart), epoch, matError)
+
+
+    '''
     # loops through every data point
     for i, point in enumerate(DATA.samples, 1):
-        error, Weights, Bias = model.train_model(point, Weights, Bias, AvgError, BaselineError, currentError)
-        # print(f"  Sample {i}: Quality={point.quality}, Error={error:.4f}")
+        matError, matWeights, matBias = model.train_model(point, matWeights, matBias, prevError, BaselineError, currentTestError)
+        # print(f"  Sample {i}: Quality={point.quality}, Error={matError:.4f}")
 
-        # Calcs the recent avg error for dynamic LR
-        AvgErrorList.append(abs(error))
+        # Calcs the recent avg matError for dynamic LR
+        AvgErrorList.append(abs(matError))
         if len(AvgErrorList) > 20:
             AvgErrorList.pop(0)
-        AvgError = sum(AvgErrorList) / len(AvgErrorList)
+        prevError = sum(AvgErrorList) / len(AvgErrorList)
 
         # write to tempholder.txt
         if Display:
             # define an array type of all the errors for epoch
-            # this will be for "Epoch Data" sheet
-            ErrorList.append(error)
+            # this will be for "Epoch matData" sheet
+            ErrorList.append(matError)
             # pass array into write to xlsx to compute correct datas
-            log.Write_To_txt(Weights, Bias, i, point.quality, error)
+            log.Write_To_txt(matWeights, matBias, i, point.quality, matError)
+    '''
+
+
+
+
+
     # print()
     # write to ML tmep Log
     if Display:
-        log.Write_To_Temp(epoch, ErrorList)
+        #log.Write_To_txt(matWeights, matBias, Quality, matError)
+        log.Write_To_TempEpoch(epoch, matError)
         # clear .txt file
-        BaselineError = max((sum(ErrorList) / len(ErrorList)) - 0.1, 0.25)
+        # list train errors when display ---- avgtrain matError - .1
+        BaselineError = max((sum(matError) / len(matError)) - 0.1, 0.25)
         ErrorList = []
         with open("Temp_Holder.txt", "w") as f:
             f.write("")
 
-        testData = Test(dataStart, dataEnd, Weights, Bias)
-        currentError = testData[8]
+        testData = Test(dataStart, dataEnd, matWeights, matBias)
+        currentTestError = testData[8]
+
+        Weights = matWeights.flatten().tolist()
 
         print(f"Epoch: {epoch}")
-        if currentError < bestError:
+        if currentTestError < bestError:
             # NEW BEST! Save and reset
-            bestError = currentError
+            bestError = currentTestError
             bestWeights = copy.deepcopy(Weights)
             bestBias = copy.deepcopy(Bias)
             strikes = 0
 
-            print(f"✓ New best: {currentError:.4f}")
+            print(f"✓ New best: {currentTestError:.4f}")
 
         else:
             # Didn't beat best
             if epoch > 100:
                 strikes += 1
-            print(f"✗ No improvement: {currentError:.4f} (strike {strikes}/{patience})")
+            print(f"✗ No improvement: {currentTestError:.4f} (strike {strikes}/{patience})")
 
             if strikes >= patience:
                 Weights = copy.deepcopy(bestWeights)

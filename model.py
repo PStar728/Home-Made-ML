@@ -21,10 +21,10 @@ def load_weights(N_parameters, start=0.1):
 
             loaded_weights = json.load(f)
             if len(loaded_weights) == N_parameters:
-                return loaded_weights
+                return [0.1] * N_parameters #loaded_weights
 
     except (FileNotFoundError, json.JSONDecodeError):
-        return [0] * N_parameters
+        return [0.0] * N_parameters
 
     return [start] * N_parameters
 
@@ -42,16 +42,16 @@ def sigmoid(number):
 def TotalRescale(InitialBounds, FinalBounds, number):
     return FinalBounds[0] + ((number - InitialBounds[0]) / (InitialBounds[1] - InitialBounds[0])) * (FinalBounds[1] - FinalBounds[0])
 
-def Calc_Learning_Rate(AvgError, BaselineError, Base_LR):
-    LR = ((AvgError / BaselineError) ** 2) * Base_LR
+def Calc_Learning_Rate(prevError: float, BaselineError: float, Base_LR) -> float:
+    LR = ((prevError / BaselineError) ** 2) * Base_LR
     LR = min(LR, .5)
     return LR
 
-def Calc_Lambda(AvgError, testError):
+def Calc_Lambda(prevError: float, testError: float) -> float:
     if testError == 0:
         return .05
 
-    errorDiff = testError - AvgError
+    errorDiff = testError - prevError
 
     x = min(errorDiff, 0.5)  # Cap at 0.5
 
@@ -66,39 +66,61 @@ def Calc_Lambda(AvgError, testError):
     else:  # 0.4 to 0.5
         return 0.05 + 0.05 * (x - 0.4) / 0.1  # 0.05 to 0.1
 
-def predict(Data, Weights, Bias):
-    # Data is one datapoint!! Not entire data set
-    score = sum(num * weight for num, weight in zip(Data.inputs, Weights))
-    prediction = TotalRescale((-11, 11), (0, 10), score) + Bias
-    error = Data.quality - prediction
-    return error
+def predict(matData: np.ndarray, matQuality, matWeights: np.ndarray, matBias: np.ndarray) -> np.ndarray:
 
-def train_weights(Data, Weights, error, Learning_Rate, Lambda):
-    for i, x in enumerate(Data.inputs):
-        errorUpdate = Learning_Rate * x * error
+    score = matData @ matWeights
+    prediction = TotalRescale((-555, 555), (0, 10), score) + matBias
+    matError = matQuality - prediction
 
-        regL1 = (Lambda * np.sign(Weights[i]) * Learning_Rate)
-        #regL2 = ((Lambda * 0.001) * (Weights[i] ** 2) * Learning_Rate)
+    return matError
+
+def train_weights(matData: np.ndarray, matWeights: np.ndarray, matError: np.ndarray, Learning_Rate: float, Lambda: float) -> np.ndarray:
+    """
+    matData: (n_samples, n_features)
+    matError: (n_samples,1)
+    matWeights: (n_features,1)
+    """
+
+    errorUpdate: np.ndarray = Learning_Rate * (matData.T @ matError) / matData.shape[0]
+
+    regL1: np.ndarray = (Lambda * Learning_Rate) * np.sign(matWeights)
+
+    matWeights += errorUpdate - regL1
+
+    '''
+    for i, x in enumerate(matData.inputs):
+        errorUpdate = Learning_Rate * x * matError
+
+        regL1 = (Lambda * np.sign(matWeights[i]) * Learning_Rate)
+        #regL2 = ((Lambda * 0.001) * (matWeights[i] ** 2) * Learning_Rate)
 
 
-        Weights[i] += errorUpdate - regL1
+        matWeights[i] += errorUpdate - regL1
 
         # this is the original function not needed RN but keep it
         # the derivitive of this is used for the term1 and term2
-        #  regularize = ((1 - regSig) * abs(Weights[i])) + (regSig * Weights[i] ** 2)
-    return Weights
+        #  regularize = ((1 - regSig) * abs(matWeights[i])) + (regSig * matWeights[i] ** 2)
+        '''
+    return matWeights
 
 def sigmoid(number):
     return 1 / (1 + math.exp( -number))
 
-def train_bias(Bias, error, Learning_Rate):
-    Bias += Learning_Rate * error
-    return Bias
+def train_bias(matBias: np.ndarray, matError: np.ndarray, Learning_Rate: float) -> np.ndarray:
+    avgError: float = np.mean(matError)
+    matBias += Learning_Rate * avgError
+    return matBias
 
-def train_model(Data, Weights, Bias, AvgError, BaselineError, testError, Base_LR = .005):
-    error = predict(Data, Weights, Bias)
-    Learning_Rate = Calc_Learning_Rate(AvgError, BaselineError, Base_LR)
-    Lambda = Calc_Lambda(AvgError, testError)
-    Weights = train_weights(Data, Weights, error, Learning_Rate, Lambda)
-    Bias = train_bias(Bias, error, Learning_Rate)
-    return error, Weights, Bias
+def train_model(matData: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, Base_LR = .1 ):
+    # predict done ... i think
+    #Base LR used to be .005
+    matError = predict(matData, matQuality, matWeights, matBias)
+    # Learning rate done
+    Learning_Rate = Calc_Learning_Rate(prevError, BaselineError, Base_LR)
+    # lambda done
+    Lambda = Calc_Lambda(prevError, testError)
+    #train weights done
+    matWeights = train_weights(matData, matWeights, matError, Learning_Rate, Lambda)
+    #bias done
+    matBias = train_bias(matBias, matError, Learning_Rate)
+    return matError, matWeights, matBias

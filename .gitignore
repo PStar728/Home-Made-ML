@@ -10,7 +10,7 @@ __pycache__/
 .venv/
 venv/
 
-# --- Data files (generated / logs) ---
+# --- matData files (generated / logs) ---
 *.xlsx
 *.csv
 *.txt

@@ -1,3 +1,17 @@
+PARAMETERS = [
+    ('fixed acidity',        15.9,   4.6,   ['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P1
+    ('volatile acidity',     1.58,   0.12,  ['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P2
+    ('citric acid',          1.66,   0,     ['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P3
+    ('residual sugar',       15.5,   0.9,   ['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P4
+    ('chlorides',            0.611,  0.012, ['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P5
+    ('free sulfur dioxide',  72,     1,     ['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P6
+    ('total sulfur dioxide', 289,    6,     ['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P7
+    ('density',              1.0037, 0.9901,['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P8
+    ('pH',                   4.01,   2.74,  ['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P9
+    ('sulphates',            2,      0.33,  ['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P10
+    ('alcohol',              14.9,   8.4,   ['raw', 'square', 'sqrt', 'inverse', 'cube']),  # P11
+]
+
 class DataPoint:
      def __init__(self, inputs, quality):
         self.inputs = inputs      # list[float], length = 11
@@ -25,51 +39,29 @@ class DataSet:
     def Normalize(self, Value, Upper_bound, Lower_bound):
         return min(1.0, max(0.0, (Value - Lower_bound) / (Upper_bound - Lower_bound)))
 
-    def load_from_csv(self, file_path, start, end = None):
+    def get_parameters(self, rowName):
+        parameters = []
+        self.Normalize
+
+    def load_from_csv(self, file_path, start, end=None):
         import csv
         with open(file_path, 'r') as f:
-            reader = csv.DictReader(f, delimiter=';')  # UCI wine dataset uses ;
+            reader = csv.DictReader(f, delimiter=';')
             for i, row in enumerate(reader):
-                if (i < start):
+                if i < start:
                     continue
-                if (end is not None and i >= end):
+                if end is not None and i >= end:
                     break
-                inputs = [
-                    self.Normalize(float(row['fixed acidity']), 15.9, 4.6),             # P1
-                    self.Normalize(float(row['fixed acidity']), 15.9, 4.6) ** 2,        # P1^2
-                    self.Normalize(float(row['fixed acidity']), 15.9, 4.6) ** 0.5,      # SQRT(P1)
-                    self.Normalize(float(row['volatile acidity']), 1.58, 0.12),         # P2
-                    self.Normalize(float(row['volatile acidity']), 1.58, 0.12) ** 2,                           # P2^2
-                    self.Normalize(float(row['volatile acidity']), 1.58, 0.12) ** 0.5,                         # SQRT(P2)
-                    self.Normalize(float(row['citric acid']), 1.66, 0),                 # P3
-                    self.Normalize(float(row['citric acid']), 1.66, 0) ** 2,            # P3^2
-                    self.Normalize(float(row['citric acid']), 1.66, 0) ** 0.5,                                 # SQRT(P3)
-                    self.Normalize(float(row['residual sugar']), 15.5, 0.9),            # P4
-                    self.Normalize(float(row['residual sugar']), 15.5, 0.9) ** 2,       # P4^2
-                    self.Normalize(float(row['residual sugar']), 15.5, 0.9) ** 0.5,                            # SQRT(P4)
-                    self.Normalize(float(row['chlorides']), .611, .012),                # P5
-                    self.Normalize(float(row['chlorides']), .611, .012) ** 2,           # P5^2
-                    self.Normalize(float(row['chlorides']), .611, .012) ** 0.5,                                # SQRT(P5)
-                    self.Normalize(float(row['free sulfur dioxide']), 72, 1),           # P6
-                    self.Normalize(float(row['free sulfur dioxide']), 72, 1) ** 2,                             # P6^2
-                    self.Normalize(float(row['free sulfur dioxide']), 72, 1) ** 0.5,    # SQRT(P6)
-                    self.Normalize(float(row['total sulfur dioxide']), 289, 6),         # P7
-                    self.Normalize(float(row['total sulfur dioxide']), 289, 6) ** 2,    # P7^2
-                    self.Normalize(float(row['total sulfur dioxide']), 289, 6) ** 0.5,  # SQRT(P7)
-                    self.Normalize(float(row['density']), 1.0037, .9901),               # P8
-                    self.Normalize(float(row['density']), 1.0037, .9901) ** 2,                                 # P8^2
-                    self.Normalize(float(row['density']), 1.0037, .9901) ** 0.5,        # SQRT(P8)
-                    self.Normalize(float(row['pH']), 4.01, 2.74),                       # P9
-                    self.Normalize(float(row['pH']), 4.01, 2.74) ** 2,                  # P9^2
-                    self.Normalize(float(row['pH']), 4.01, 2.74) ** 0.5,                                       # SQRT(P9)
-                    self.Normalize(float(row['sulphates']), 2, .33),                    # P10
-                    self.Normalize(float(row['sulphates']), 2, .33) ** 2,               # P10^2
-                    self.Normalize(float(row['sulphates']), 2, .33) ** 0.5,             # SQRT(P10)
-                    self.Normalize(float(row['alcohol']), 14.9, 8.4),                   # P11
-                    self.Normalize(float(row['alcohol']), 14.9, 8.4) ** 2,              # P11^2
-                    self.Normalize(float(row['alcohol']), 14.9, 8.4) ** 0.5                                    # SQRT(P11)
 
-                ]
+                inputs = []
+                for col, upper, lower, transforms in PARAMETERS:
+                    val = self.Normalize(float(row[col]), upper, lower)
+                    if 'raw' in transforms: inputs.append(val)
+                    if 'square' in transforms: inputs.append(val ** 2)
+                    if 'sqrt' in transforms: inputs.append(val ** 0.5)
+                    if 'inverse' in transforms: inputs.append(1 / val if val != 0 else 0)
+                    if 'cube' in transforms: inputs.append(val ** 3)
+
                 quality = int(row['quality'])
-                self.samples.append(DataPoint(inputs, quality)) 
+                self.samples.append(DataPoint(inputs, quality))
         self.Compute_Average()

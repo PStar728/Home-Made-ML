@@ -1,7 +1,10 @@
+from typing import List
+
 from openpyxl import Workbook, load_workbook
 from datetime import datetime
 import os
 import subprocess
+import numpy as np
 
 # checks if epoch number == (1, 2, 5, 10, 20, 50...)
 def Display_Check(Epoch):
@@ -15,17 +18,22 @@ def Display_Check(Epoch):
     
     return False
 
-def Write_To_Temp(EpochNum, ErrorList):
+def Write_To_TempData(numPoints: int, EpochNum: int, matError: np.ndarray):
     file_path_temp = "Temp_Log.xlsx"
     file_path_txt = "Temp_Holder.txt"
     
     wb = try_temp_workbook(file_path_temp)
     sheet = wb["TEMP_DATA"]
-    
+
     # formatting
-    sheet.append([f"Epoch {EpochNum}", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "Bias", "Quality", "Prediction", "Error"])
-    
+    if EpochNum == 1:
+        header = ["Epoch#"] + [f"E{i + 1}" for i in range(numPoints)]
+        sheet.append(header)
+    errorList: list = matError.flatten().tolist()
+    sheet.append([EpochNum] + errorList)
+
     # adds the data
+    """
     with open(file_path_txt, "r") as txt:
         for line in txt:
             line = line.strip()
@@ -35,8 +43,12 @@ def Write_To_Temp(EpochNum, ErrorList):
             for i in range(1, len(columns)):
                 columns[i] = float(columns[i])
             sheet.append(columns)
+        """
 
-    Epoch_Data_Line = Calculate_Epoch_Data((EpochNum), ErrorList)
+    """
+    Stuff for Epoch holder not needed here
+    
+    Epoch_Data_Line = Calculate_Epoch_Data((EpochNum), errorList)
 
     sheet = wb["EPOCH_HOLDER"]
 
@@ -46,6 +58,23 @@ def Write_To_Temp(EpochNum, ErrorList):
 
     sheet.append(Epoch_Data_Line)
 
+    wb.save(file_path_temp)
+    """
+
+def Write_To_TempEpoch(EpochNum: int, matError: np.ndarray):
+    file_path_temp = "Temp_Log.xlsx"
+    wb = try_temp_workbook(file_path_temp)
+    sheet = wb["EPOCH_HOLDER"]
+
+    if EpochNum == 1:
+        sheet.append(
+            [f"Epoch #", "Min Error", "Quartile 1", "Median Error", "Quartile 3", "Max Error", "IQR", "Error Range",
+             "Mean Error", "STDV"])
+
+    errorList: list = matError.flatten().tolist()
+    Epoch_Data_Line = Calculate_Epoch_Data((EpochNum), errorList)
+
+    sheet.append(Epoch_Data_Line)
     wb.save(file_path_temp)
 
 def Write_To_xlsx():
@@ -76,47 +105,33 @@ def Write_To_xlsx():
     # Atomic replace protects main file
     os.replace(file_stage, file_main)
 
-
-    
-def Write_To_txt(Weights, Bias, DataPoint, Quality, Error):
+"""
+def Write_To_txt(matWeight: np.ndarray, matBias: np.ndarray, Quality: np.ndarray, Error: np.ndarray) -> None:
     file_path = "Temp_Holder.txt"
     
     with open(file_path, "a") as f:
-        weights_str = ", ".join(str(w) for w in Weights)
+        weights_str = ", ".join(str(w) for w in matWeight)
         prediction = Quality - Error
         
         f.write(
-            f"{DataPoint}, {weights_str}, {Bias}, {Quality}, {prediction}, {Error}\n"
+            f"{weights_str}, {matBias}, {Quality}, {prediction}, {Error}\n"
         ) 
+"""
 
-def Calculate_Epoch_Data(EpochNum, ErrorList):
-    n = len(ErrorList)
 
-    ABSerror = [abs(e) for e in ErrorList]
-    errors = sorted(ABSerror)  # do NOT mutate original list
+def Calculate_Epoch_Data(EpochNum: int, ErrorList: list) -> list:
+    errors = np.abs(np.array(ErrorList))
 
-    total = sum(errors)
-    mean = total / n
+    min_err = np.min(errors)
+    q1 = np.percentile(errors, 25)
+    median = np.median(errors)
+    q3 = np.percentile(errors, 75)
+    max_err = np.max(errors)
 
-    # Median
-    mid = n // 2
-    if n % 2 == 1:
-        median = errors[mid]
-    else:
-        median = (errors[mid - 1] + errors[mid]) / 2
-
-    min_err = errors[0]
-    max_err = errors[-1]
-    err_range = max_err - min_err
-
-    # Population standard deviation
-    variance = sum((x - mean) ** 2 for x in errors) / n
-    stdv = variance ** 0.5
-
-    # Quartiles (simple)
-    q1 = errors[n // 4]
-    q3 = errors[(n * 3) // 4]
     iqr = q3 - q1
+    err_range = max_err - min_err
+    mean = np.mean(errors)
+    stdv = np.std(errors)
 
     return [
         EpochNum,
