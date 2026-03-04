@@ -14,7 +14,7 @@ print("=== ML Training Session ===")
 dataStart: int = 0
 dataEnd: int = 1200
 DATA:DataSet = DataSet()
-DATA.load_from_csv("winequality-red.csv", dataStart, dataEnd)
+DATA.load_from_csv("winequality-red.csv", dataStart, dataEnd, True)
 
 print(f"Loaded {len(DATA.samples)} samples\n")
 
@@ -29,9 +29,10 @@ print("Loading data...")
 
 # redefines as a numpy matrix
 Inputs: np.ndarray = np.array([dp.inputs for dp in DATA.samples])
-Quality: np.ndarray = np.array([dp.quality for dp in DATA.samples])
-matWeights: np.ndarray = np.array(Weights)
-matBias: np.ndarray = np.array(Bias)
+Quality: np.ndarray = np.array([dp.quality for dp in DATA.samples]).reshape(-1, 1)
+Weirdness: np.ndarray = np.array(DATA.weirdness).reshape(-1, 1)
+matWeights: np.ndarray = np.array(Weights).reshape(-1, 1)
+matBias: np.ndarray = np.array([Bias])
 matError: np.ndarray = np.array(None)
 
 #initializes variables for the main
@@ -49,14 +50,14 @@ currentTestError: float = 0
 #starts the main loop
 #loop define to be inf. until the comment is deleted
 epoch: int = 1
-while epoch < 5000:
+while epoch < 2000:
     #print(f"--- Epoch {epoch} ---")
 
     # Display checks if epoch == (1, 2, 5, 10, 20, 50, 100...)
     # Display is used for anything that should only be done periodically not every epoch
     Display = log.Display_Check(epoch)
 
-    matError, matWeights, matBias = model.train_model(Inputs, Quality, matWeights, matBias, prevError, BaselineError, currentTestError)
+    matError, matWeights, matBias = model.train_model(Inputs, Weirdness, Quality, matWeights, matBias, prevError, BaselineError, currentTestError, epoch)
     prevError = np.average(matError)
     log.Write_To_TempData((dataEnd - dataStart), epoch, matError)
 

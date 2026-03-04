@@ -1,6 +1,9 @@
 import math
 import json
+from unittest import case
+
 import numpy as np
+from openpyxl.descriptors.excel import Percentage
 
 weights_file = "weights.json"
 bias_file = "bias.json"
@@ -54,7 +57,7 @@ def Calc_Lambda(prevError: float, testError: float) -> float:
     errorDiff = testError - prevError
 
     x = min(errorDiff, 0.5)  # Cap at 0.5
-
+    return 0
     if x <= 0.1:
         return 0.0
     elif x <= 0.2:
@@ -69,19 +72,58 @@ def Calc_Lambda(prevError: float, testError: float) -> float:
 def predict(matData: np.ndarray, matQuality, matWeights: np.ndarray, matBias: np.ndarray) -> np.ndarray:
 
     score = matData @ matWeights
-    prediction = TotalRescale((-555, 555), (0, 10), score) + matBias
-    matError = matQuality - prediction
+    prediction = TotalRescale((-55, 55), (0, 10), score) + matBias
+    matError = matQuality.reshape(-1, 1) - prediction
+    '''
+    print(f"matBias: {matBias.shape}")
+    print(f"score: {score.shape}")
+    print(f"prediction: {prediction.shape}")
+    print(f"matQuality: {matQuality.shape}")
+    print(f"matError: {matError.shape}")
+    '''
 
     return matError
 
-def train_weights(matData: np.ndarray, matWeights: np.ndarray, matError: np.ndarray, Learning_Rate: float, Lambda: float) -> np.ndarray:
+def Get_Current_Boosted(epochNum: int) -> tuple:
+    boundaries = [0, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, float('inf')]
+    n_groups = len(boundaries) - 1
+    current_group = epochNum % n_groups
+    return (boundaries[current_group], boundaries[current_group + 1])
+
+def Get_Boost_Mat(Weirdness: np.ndarray, epochNum: int) -> np.ndarray:
+
+    (boundLow, boundHigh) = Get_Current_Boosted(epochNum)
+
+    boostMult: float = Get_Boost_Multiplier(boundLow, boundHigh, Weirdness)
+
+    matBoost: np.ndarray = np.ones((len(Weirdness), 1))
+
+    for i, w in enumerate(Weirdness):
+        if boundLow <= w < boundHigh:
+            matBoost[i] = boostMult
+
+    matBoost = matBoost / matBoost.mean()
+
+    return matBoost
+
+def Get_Boost_Multiplier(low: float, high: float, Weirdness: list) -> float:
+    count = sum(1 for w in Weirdness if low <= w < high)
+    percentage = count / len(Weirdness)
+    return 1 / (1 + math.exp(10 * (percentage - 0.5)))
+
+
+
+def train_weights(matData: np.ndarray, matWeights: np.ndarray, matBoost: np.ndarray, matError: np.ndarray, Learning_Rate: float, Lambda: float) -> np.ndarray:
     """
     matData: (n_samples, n_features)
     matError: (n_samples,1)
     matWeights: (n_features,1)
     """
 
-    errorUpdate: np.ndarray = Learning_Rate * (matData.T @ matError) / matData.shape[0]
+    matError = matError.reshape(-1, 1)
+    matWeights = matWeights.reshape(-1, 1)
+
+    errorUpdate: np.ndarray = Learning_Rate * (matData.T @ (matError * matBoost)) / matData.shape[0]
 
     regL1: np.ndarray = (Lambda * Learning_Rate) * np.sign(matWeights)
 
@@ -111,7 +153,7 @@ def train_bias(matBias: np.ndarray, matError: np.ndarray, Learning_Rate: float) 
     matBias += Learning_Rate * avgError
     return matBias
 
-def train_model(matData: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, Base_LR = .1 ):
+def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, epochNum: int, Base_LR = .01):
     # predict done ... i think
     #Base LR used to be .005
     matError = predict(matData, matQuality, matWeights, matBias)
@@ -119,8 +161,10 @@ def train_model(matData: np.ndarray, matQuality: np.ndarray, matWeights: np.ndar
     Learning_Rate = Calc_Learning_Rate(prevError, BaselineError, Base_LR)
     # lambda done
     Lambda = Calc_Lambda(prevError, testError)
+
+    matBoost = Get_Boost_Mat(Weirdness, epochNum)
     #train weights done
-    matWeights = train_weights(matData, matWeights, matError, Learning_Rate, Lambda)
+    matWeights = train_weights(matData, matWeights, matBoost, matError, Learning_Rate, Lambda)
     #bias done
     matBias = train_bias(matBias, matError, Learning_Rate)
     return matError, matWeights, matBias

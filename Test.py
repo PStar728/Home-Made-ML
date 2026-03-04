@@ -6,8 +6,9 @@ import numpy as np
 TESTDATA = DataSet()
 
 def Define_Testing_Ranges(dataStart, dataEnd):
-    TESTDATA.load_from_csv("winequality-red.csv", 0, dataStart)
-    TESTDATA.load_from_csv("winequality-red.csv", dataEnd)
+
+    TESTDATA.load_from_csv("winequality-red.csv", 0, dataStart, False)
+    TESTDATA.load_from_csv("winequality-red.csv", dataEnd, None ,False)
 
 def Test(dataStart: int, dataEnd: int, matWeight, matBias):
 
