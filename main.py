@@ -54,7 +54,7 @@ currentTestError: float = 0
 #starts the main loop
 #loop define to be inf. until the comment is deleted
 epoch: int = 1
-while epoch <= 200:
+while epoch <= 20000:
     #print(f"--- Epoch {epoch} ---")
 
     # Display checks if epoch == (1, 2, 5, 10, 20, 50, 100...)

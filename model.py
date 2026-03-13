@@ -12,8 +12,8 @@ def load_bias():
     bias = 1.0
     try:
         with open(bias_file, "r") as f:
-            bias = json.load(f)
-            #bias = 5.6
+            #bias = json.load(f)
+            bias = 5.6
     except (FileNotFoundError, json.JSONDecodeError):
         bias = 5.6
     return bias
@@ -25,8 +25,8 @@ def load_weights(N_parameters, start=0.1):
 
             loaded_weights = json.load(f)
             if len(loaded_weights) == N_parameters:
-                return loaded_weights
-                #return [0.1] * N_parameters
+                #return loaded_weights
+                return [0.1] * N_parameters
 
     except (FileNotFoundError, json.JSONDecodeError):
         return [0.0] * N_parameters
@@ -197,9 +197,7 @@ def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarr
     matError = predict(matData, matQuality, matWeights, matBias)
 
 
-
-
-
+    '''
     (low, high) = Get_Current_Boosted(epochNum)
 
     # 2. Find which wines belong to this bin
@@ -221,7 +219,7 @@ def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarr
     sheet_temp = wb_temp["TEMP_DATA"]
     sheet_temp.append(["Epoch #"] + [epochNum] + ["Bin"] + [epochNum%13] + ["Error"] + [bin_mean])
     wb_temp.save(file_temp)
-
+    '''
 
 
 
@@ -234,7 +232,7 @@ def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarr
     matBoost = Get_Boost_Mat(Weirdness, epochNum)
 
     #train weights done
-    #matWeights = train_weights(matData, matWeights, matBoost, matError, Learning_Rate, Lambda)
+    matWeights = train_weights(matData, matWeights, matBoost, matError, Learning_Rate, Lambda)
     #bias done
-    #matBias = train_bias(matBias, matError, Learning_Rate, matWeights, None)
+    matBias = train_bias(matBias, matError, Learning_Rate, matWeights, None)
     return matError, matWeights, matBias
