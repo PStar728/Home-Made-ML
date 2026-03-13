@@ -9,12 +9,13 @@ weights_file = "weights.json"
 bias_file = "bias.json"
 
 def load_bias():
-    bias = 1
+    bias = 1.0
     try:
         with open(bias_file, "r") as f:
             bias = json.load(f)
+            #bias = 5.6
     except (FileNotFoundError, json.JSONDecodeError):
-        bias = 0
+        bias = 5.6
     return bias
 
 
@@ -24,7 +25,8 @@ def load_weights(N_parameters, start=0.1):
 
             loaded_weights = json.load(f)
             if len(loaded_weights) == N_parameters:
-                return [0.1] * N_parameters #loaded_weights
+                return loaded_weights
+                #return [0.1] * N_parameters
 
     except (FileNotFoundError, json.JSONDecodeError):
         return [0.0] * N_parameters
@@ -57,10 +59,10 @@ def Calc_Lambda(prevError: float, testError: float) -> float:
     errorDiff = testError - prevError
 
     x = min(errorDiff, 0.5)  # Cap at 0.5
-    return 0
-    if x <= 0.1:
-        return 0.0
-    elif x <= 0.2:
+
+    if x <= 0.05:
+        return 0
+    elif x <= 0.15:
         return 0.001 * (x - 0.1) / 0.1  # 0 to 0.001
     elif x <= 0.3:
         return 0.001 + 0.009 * (x - 0.2) / 0.1  # 0.001 to 0.01
@@ -72,7 +74,17 @@ def Calc_Lambda(prevError: float, testError: float) -> float:
 def predict(matData: np.ndarray, matQuality, matWeights: np.ndarray, matBias: np.ndarray) -> np.ndarray:
 
     score = matData @ matWeights
-    prediction = TotalRescale((-55, 55), (0, 10), score) + matBias
+
+    '''
+    print("Max abs feature:", np.max(np.abs(matData)))
+    print("Mean abs feature:", np.mean(np.abs(matData)))
+    print("Max abs score:", np.max(np.abs(score)))
+    print("Mean abs score:", np.mean(np.abs(score)))
+    '''
+
+
+    #prediction = TotalRescale((-55, 55), (0, 10), score) + matBias
+    prediction = score + matBias
     matError = matQuality.reshape(-1, 1) - prediction
     '''
     print(f"matBias: {matBias.shape}")
@@ -94,22 +106,36 @@ def Get_Boost_Mat(Weirdness: np.ndarray, epochNum: int) -> np.ndarray:
 
     (boundLow, boundHigh) = Get_Current_Boosted(epochNum)
 
-    boostMult: float = Get_Boost_Multiplier(boundLow, boundHigh, Weirdness)
+    count = sum(1 for w in Weirdness if boundLow <= w < boundHigh)
+    percentage = count / len(Weirdness)
+
+    boostMult: float = Get_Boost_Multiplier(percentage)
 
     matBoost: np.ndarray = np.ones((len(Weirdness), 1))
 
+    if count == 0:
+        return matBoost
+
     for i, w in enumerate(Weirdness):
         if boundLow <= w < boundHigh:
-            matBoost[i] = boostMult
+            matBoost[i] = boostMult/count
+        else :
+            matBoost[i] = (1-boostMult)/(1200-count) #number of points is hard coded here "1200"
 
     matBoost = matBoost / matBoost.mean()
 
     return matBoost
 
-def Get_Boost_Multiplier(low: float, high: float, Weirdness: list) -> float:
-    count = sum(1 for w in Weirdness if low <= w < high)
-    percentage = count / len(Weirdness)
-    return 1 / (1 + math.exp(10 * (percentage - 0.5)))
+def Get_Boost_Multiplier(percentage: float) -> float:
+
+    k = 11
+    center = 0.25
+    y_min = 0.75
+    y_range = 0.20
+
+    share = y_min + (y_range / (1 + math.exp(k * (percentage - center))))
+
+    return max(share, 0.75)
 
 
 
@@ -148,23 +174,67 @@ def train_weights(matData: np.ndarray, matWeights: np.ndarray, matBoost: np.ndar
 def sigmoid(number):
     return 1 / (1 + math.exp( -number))
 
-def train_bias(matBias: np.ndarray, matError: np.ndarray, Learning_Rate: float) -> np.ndarray:
-    avgError: float = np.mean(matError)
-    matBias += Learning_Rate * avgError
+def train_bias(matBias: np.ndarray, matError: np.ndarray, Learning_Rate: float, matWeights: np.ndarray, matBoost: np.ndarray) -> np.ndarray:
+
+    if(matBoost is not None):
+        avgError: float = np.mean(matError * matBoost)
+    else:
+        avgError: float = np.mean(matError)
+    avgWeight: float = np.mean(abs(matWeights))
+    matBias += Learning_Rate * avgError * ((avgWeight + 1) ** 2)
+    '''
+    if(avgWeight > 1):
+        matBias += Learning_Rate * avgError * (avgWeight ** 2)
+    else:
+        matBias += Learning_Rate * avgError * (avgWeight + 1)
+    '''
+    #print("Bias: ", matBias)
     return matBias
 
 def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, epochNum: int, Base_LR = .01):
     # predict done ... i think
     #Base LR used to be .005
     matError = predict(matData, matQuality, matWeights, matBias)
+
+
+
+
+
+    (low, high) = Get_Current_Boosted(epochNum)
+
+    # 2. Find which wines belong to this bin
+    # (We flatten Weirdness to make it a simple 1D list for the comparison)
+    mask = (Weirdness.flatten() >= low) & (Weirdness.flatten() < high)
+
+    # 3. Pull those specific errors
+    bin_errors = matError[mask]
+
+    # 4. Calculate the Raw Mean (to see the "Shift")
+    bin_mean = np.mean(bin_errors) if len(bin_errors) > 0 else 0
+
+    print(f"Epoch {epochNum} | Bin {epochNum % 13} | Wines in Bin: {len(bin_errors)} / {len(matError)}")
+
+    from openpyxl import Workbook, load_workbook
+    import log
+    file_temp = "Temp_Log.xlsx"
+    wb_temp = log.try_temp_workbook(file_temp)
+    sheet_temp = wb_temp["TEMP_DATA"]
+    sheet_temp.append(["Epoch #"] + [epochNum] + ["Bin"] + [epochNum%13] + ["Error"] + [bin_mean])
+    wb_temp.save(file_temp)
+
+
+
+
+
     # Learning rate done
     Learning_Rate = Calc_Learning_Rate(prevError, BaselineError, Base_LR)
     # lambda done
     Lambda = Calc_Lambda(prevError, testError)
 
     matBoost = Get_Boost_Mat(Weirdness, epochNum)
+
     #train weights done
-    matWeights = train_weights(matData, matWeights, matBoost, matError, Learning_Rate, Lambda)
+    #matWeights = train_weights(matData, matWeights, matBoost, matError, Learning_Rate, Lambda)
     #bias done
-    matBias = train_bias(matBias, matError, Learning_Rate)
+    #matBias = train_bias(matBias, matError, Learning_Rate, matWeights, None)
     return matError, matWeights, matBias

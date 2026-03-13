@@ -92,8 +92,8 @@ def Write_To_xlsx():
 
     # Append rows (skip header row from temp)
     for i, row in enumerate(sheet_temp.iter_rows(values_only=True)):
-        if i == 0:
-            continue
+        #if i == 0:
+            #continue
         sheet_main.append(row)
 
     # Save safely to staging file first
@@ -198,3 +198,9 @@ def try_temp_workbook(file_path):
             wb.create_sheet(name)
 
     return wb
+
+def Clear_Temp(file_path: str) -> None:
+    try:
+        os.remove(file_path)
+    except FileNotFoundError:
+        pass

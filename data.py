@@ -90,7 +90,9 @@ class DataSet:
                         rawInputs.append(val)
                     if 'square' in transforms: inputs.append(val ** 2)
                     if 'sqrt' in transforms: inputs.append(val ** 0.5)
-                    if 'inverse' in transforms: inputs.append(self.sigmoid(1 / val) if val != 0 else 0)
+                    if 'inverse' in transforms:
+                        sig_inv = self.sigmoid(1 / val) if val != 0 else 0
+                        inputs.append(sig_inv)
                     if 'cube' in transforms: inputs.append(val ** 3)
 
                 quality = int(row['quality'])

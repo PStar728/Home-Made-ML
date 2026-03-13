@@ -16,6 +16,7 @@ def Test(dataStart: int, dataEnd: int, matWeight, matBias):
         Define_Testing_Ranges(dataStart, dataEnd)
 
     testData: np.ndarray = np.array([dp.inputs for dp in TESTDATA.samples])
+    testData = testData - testData.mean(axis=0)
     testQuality: np.ndarray = np.array([dp.quality for dp in TESTDATA.samples])
 
     testErrors = predict(testData, testQuality, matWeight, matBias)

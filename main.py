@@ -5,9 +5,12 @@ from Test import Test
 import model
 import log
 import numpy as np
+import time
+start = time.time()
 
 #saves and closes ML_log.xlsx
 log.Save_Close("ML_log.xlsx")
+log.Clear_Temp("Temp_Log.xlsx")
 
 #defines training data points
 print("=== ML Training Session ===")
@@ -29,6 +32,7 @@ print("Loading data...")
 
 # redefines as a numpy matrix
 Inputs: np.ndarray = np.array([dp.inputs for dp in DATA.samples])
+Inputs = Inputs - Inputs.mean(axis=0)
 Quality: np.ndarray = np.array([dp.quality for dp in DATA.samples]).reshape(-1, 1)
 Weirdness: np.ndarray = np.array(DATA.weirdness).reshape(-1, 1)
 matWeights: np.ndarray = np.array(Weights).reshape(-1, 1)
@@ -50,16 +54,16 @@ currentTestError: float = 0
 #starts the main loop
 #loop define to be inf. until the comment is deleted
 epoch: int = 1
-while epoch < 2000:
+while epoch <= 200:
     #print(f"--- Epoch {epoch} ---")
 
     # Display checks if epoch == (1, 2, 5, 10, 20, 50, 100...)
     # Display is used for anything that should only be done periodically not every epoch
     Display = log.Display_Check(epoch)
-
+    #t0 = time.time()
     matError, matWeights, matBias = model.train_model(Inputs, Weirdness, Quality, matWeights, matBias, prevError, BaselineError, currentTestError, epoch)
-    prevError = np.average(matError)
-    log.Write_To_TempData((dataEnd - dataStart), epoch, matError)
+    #print(time.time() - t0)
+    prevError = np.average(np.abs(matError))
 
 
     '''
@@ -90,8 +94,12 @@ while epoch < 2000:
     # print()
     # write to ML tmep Log
     if Display:
+        print("Bias: ", matBias)
+        log.Write_To_TempData((dataEnd - dataStart), epoch, matError)
         #log.Write_To_txt(matWeights, matBias, Quality, matError)
+        #t1 = time.time()
         log.Write_To_TempEpoch(epoch, matError)
+        #print(time.time() - t1)
         # clear .txt file
         # list train errors when display ---- avgtrain matError - .1
         BaselineError = max((sum(matError) / len(matError)) - 0.1, 0.25)
@@ -103,6 +111,7 @@ while epoch < 2000:
         currentTestError = testData[8]
 
         Weights = matWeights.flatten().tolist()
+        Bias = matBias.flatten().tolist()
 
         print(f"Epoch: {epoch}")
         if currentTestError < bestError:
@@ -132,8 +141,12 @@ model.save_bias(Bias)
 
 print("\n=== Training Complete ===")
 print(f"Final weights: {Weights}")
+print(f"Final bias: {Bias}")
 
 Test(dataStart, dataEnd, Weights, Bias)
 
 log.Write_To_xlsx()
 log.Open_xlsm("ML_log.xlsx")
+log.Open_xlsm("Temp_Log.xlsx")
+
+print("Time:", time.time() - start)
