@@ -1,6 +1,7 @@
 import copy
 
 from data import DataSet
+from model import boundaries
 from Test import Test
 import model
 import log
@@ -30,14 +31,18 @@ print("Loading data...")
 
 #epochs = int(input("How many times should I train with this dataset? "))
 
+bins = [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25]
+
 # redefines as a numpy matrix
 Inputs: np.ndarray = np.array([dp.inputs for dp in DATA.samples])
 Inputs = Inputs - Inputs.mean(axis=0)
 Quality: np.ndarray = np.array([dp.quality for dp in DATA.samples]).reshape(-1, 1)
 Weirdness: np.ndarray = np.array(DATA.weirdness).reshape(-1, 1)
 matWeights: np.ndarray = np.array(Weights).reshape(-1, 1)
-matBias: np.ndarray = np.array([Bias])
+matBias: np.ndarray = np.array([Bias]).reshape(-1,1)
 matError: np.ndarray = np.array(None)
+matBin: np.ndarray = np.digitize(Weirdness.flatten(), bins)
+matBin = matBin.reshape(-1, 1)
 
 #initializes variables for the main
 ErrorList: list = []
@@ -61,7 +66,7 @@ while epoch <= 20000:
     # Display is used for anything that should only be done periodically not every epoch
     Display = log.Display_Check(epoch)
     #t0 = time.time()
-    matError, matWeights, matBias = model.train_model(Inputs, Weirdness, Quality, matWeights, matBias, prevError, BaselineError, currentTestError, epoch)
+    matError, matWeights, matBias = model.train_model(Inputs, Weirdness, Quality, matWeights, matBias, prevError, BaselineError, currentTestError, epoch, matBin)
     #print(time.time() - t0)
     prevError = np.average(np.abs(matError))
 

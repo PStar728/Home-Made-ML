@@ -71,6 +71,7 @@ class DataSet:
                         for i in range(n_features) if stds[i] != 0)
             self.weirdness.append(score)
 
+
     def load_from_csv(self, file_path, start, end, isTraining):
         import csv
         with open(file_path, 'r') as f:
@@ -100,5 +101,4 @@ class DataSet:
 
                 self.samples.append(DataPoint(inputs, quality, rawInputs))
         #self.Compute_Average()
-        if isTraining:
-            self.Compute_z_score()
+        self.Compute_z_score()

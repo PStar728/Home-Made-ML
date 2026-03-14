@@ -7,15 +7,16 @@ from openpyxl.descriptors.excel import Percentage
 
 weights_file = "weights.json"
 bias_file = "bias.json"
+boundaries = [0, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, float('inf')]
 
 def load_bias():
-    bias = 1.0
+    bias = [5.5] * (len(boundaries) - 1)
     try:
         with open(bias_file, "r") as f:
             #bias = json.load(f)
-            bias = 5.6
+            bias = [5.5] * (len(boundaries) - 1)
     except (FileNotFoundError, json.JSONDecodeError):
-        bias = 5.6
+        bias = [5.5] * (len(boundaries) - 1)
     return bias
 
 
@@ -71,7 +72,7 @@ def Calc_Lambda(prevError: float, testError: float) -> float:
     else:  # 0.4 to 0.5
         return 0.05 + 0.05 * (x - 0.4) / 0.1  # 0.05 to 0.1
 
-def predict(matData: np.ndarray, matQuality, matWeights: np.ndarray, matBias: np.ndarray) -> np.ndarray:
+def predict(matData: np.ndarray, matQuality, matWeights: np.ndarray, matBias: np.ndarray, matBin: np.ndarray) -> np.ndarray:
 
     score = matData @ matWeights
 
@@ -84,7 +85,7 @@ def predict(matData: np.ndarray, matQuality, matWeights: np.ndarray, matBias: np
 
 
     #prediction = TotalRescale((-55, 55), (0, 10), score) + matBias
-    prediction = score + matBias
+    prediction = score + matBias[matBin.flatten()]
     matError = matQuality.reshape(-1, 1) - prediction
     '''
     print(f"matBias: {matBias.shape}")
@@ -96,35 +97,35 @@ def predict(matData: np.ndarray, matQuality, matWeights: np.ndarray, matBias: np
 
     return matError
 
+
 def Get_Current_Boosted(epochNum: int) -> tuple:
-    boundaries = [0, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, float('inf')]
+    #boundaries = [0, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, float('inf')]
     n_groups = len(boundaries) - 1
-    current_group = epochNum % n_groups
-    return (boundaries[current_group], boundaries[current_group + 1])
+    return epochNum % n_groups
 
-def Get_Boost_Mat(Weirdness: np.ndarray, epochNum: int) -> np.ndarray:
+def Get_Boost_Mat(matBin: np.ndarray, epochNum: int) -> np.ndarray:
 
-    (boundLow, boundHigh) = Get_Current_Boosted(epochNum)
+    currentBoost = Get_Current_Boosted(epochNum)
 
-    count = sum(1 for w in Weirdness if boundLow <= w < boundHigh)
-    percentage = count / len(Weirdness)
+    count = sum(1 for b in matBin if  b == currentBoost)
+    percentage = count / len(matBin)
 
     boostMult: float = Get_Boost_Multiplier(percentage)
 
-    matBoost: np.ndarray = np.ones((len(Weirdness), 1))
+    matBoost: np.ndarray = np.ones((len(matBin), 1))
 
     if count == 0:
         return matBoost
 
-    for i, w in enumerate(Weirdness):
-        if boundLow <= w < boundHigh:
+    for i, b in enumerate(matBin):
+        if b == currentBoost:
             matBoost[i] = boostMult/count
         else :
             matBoost[i] = (1-boostMult)/(1200-count) #number of points is hard coded here "1200"
 
     matBoost = matBoost / matBoost.mean()
 
-    return matBoost
+    return matBoost, currentBoost
 
 def Get_Boost_Multiplier(percentage: float) -> float:
 
@@ -148,6 +149,7 @@ def train_weights(matData: np.ndarray, matWeights: np.ndarray, matBoost: np.ndar
 
     matError = matError.reshape(-1, 1)
     matWeights = matWeights.reshape(-1, 1)
+
 
     errorUpdate: np.ndarray = Learning_Rate * (matData.T @ (matError * matBoost)) / matData.shape[0]
 
@@ -174,14 +176,13 @@ def train_weights(matData: np.ndarray, matWeights: np.ndarray, matBoost: np.ndar
 def sigmoid(number):
     return 1 / (1 + math.exp( -number))
 
-def train_bias(matBias: np.ndarray, matError: np.ndarray, Learning_Rate: float, matWeights: np.ndarray, matBoost: np.ndarray) -> np.ndarray:
+def train_bias(matBias: np.ndarray, matError: np.ndarray, Learning_Rate: float, matWeights: np.ndarray, boostedBin: int, matBin: np.ndarray) -> np.ndarray:
 
-    if(matBoost is not None):
-        avgError: float = np.mean(matError * matBoost)
-    else:
-        avgError: float = np.mean(matError)
+    mask = (matBin.flatten() == boostedBin)
+
+    avgError: float = np.mean(matError[mask])
     avgWeight: float = np.mean(abs(matWeights))
-    matBias += Learning_Rate * avgError * ((avgWeight + 1) ** 2)
+    matBias[boostedBin] += Learning_Rate * avgError * ((avgWeight + 1) ** 2)
     '''
     if(avgWeight > 1):
         matBias += Learning_Rate * avgError * (avgWeight ** 2)
@@ -191,10 +192,10 @@ def train_bias(matBias: np.ndarray, matError: np.ndarray, Learning_Rate: float, 
     #print("Bias: ", matBias)
     return matBias
 
-def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, epochNum: int, Base_LR = .01):
+def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, epochNum: int, matBin: np.ndarray, Base_LR = .01):
     # predict done ... i think
     #Base LR used to be .005
-    matError = predict(matData, matQuality, matWeights, matBias)
+    matError = predict(matData, matQuality, matWeights, matBias, matBin)
 
 
     '''
@@ -222,17 +223,15 @@ def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarr
     '''
 
 
-
-
     # Learning rate done
     Learning_Rate = Calc_Learning_Rate(prevError, BaselineError, Base_LR)
     # lambda done
     Lambda = Calc_Lambda(prevError, testError)
 
-    matBoost = Get_Boost_Mat(Weirdness, epochNum)
+    matBoost, boostedBin = Get_Boost_Mat(matBin, epochNum)
 
     #train weights done
     matWeights = train_weights(matData, matWeights, matBoost, matError, Learning_Rate, Lambda)
     #bias done
-    matBias = train_bias(matBias, matError, Learning_Rate, matWeights, None)
+    matBias = train_bias(matBias, matError, Learning_Rate, matWeights, boostedBin, matBin)
     return matError, matWeights, matBias

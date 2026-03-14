@@ -124,7 +124,7 @@ def Calculate_Epoch_Data(EpochNum: int, ErrorList: list) -> list:
 
     min_err = np.min(errors)
     q1 = np.percentile(errors, 25)
-    median = np.median(errors)
+    median = np.percentile(errors, 50)
     q3 = np.percentile(errors, 75)
     max_err = np.max(errors)
 
