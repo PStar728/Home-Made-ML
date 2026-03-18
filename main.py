@@ -7,6 +7,7 @@ import model
 import log
 import numpy as np
 import time
+import Janitor
 start = time.time()
 
 #saves and closes ML_log.xlsx
@@ -16,7 +17,7 @@ log.Clear_Temp("Temp_Log.xlsx")
 #defines training data points
 print("=== ML Training Session ===")
 dataStart: int = 0
-dataEnd: int = 1200
+dataEnd: int = 1199
 DATA:DataSet = DataSet()
 DATA.load_from_csv("winequality-red.csv", dataStart, dataEnd, True)
 
@@ -49,24 +50,25 @@ ErrorList: list = []
 AvgErrorList: list = []
 prevError: float = 0.5
 BaselineError: float = .4
-bestWeights: list = None
-bestBias: list = None
+matBestWeights: np.ndarray = None
+matBestBias: np.ndarray = None
 strikes: int = 0
-patience: int = 2
+patience: int = 3
 bestError: float = float('inf')
 currentTestError: float = 0
+janMat: np.ndarray = np.ones_like(matWeights)
 
 #starts the main loop
 #loop define to be inf. until the comment is deleted
 epoch: int = 1
-while epoch <= 20000:
+while epoch <= 200000:
     #print(f"--- Epoch {epoch} ---")
 
     # Display checks if epoch == (1, 2, 5, 10, 20, 50, 100...)
     # Display is used for anything that should only be done periodically not every epoch
     Display = log.Display_Check(epoch)
     #t0 = time.time()
-    matError, matWeights, matBias = model.train_model(Inputs, Weirdness, Quality, matWeights, matBias, prevError, BaselineError, currentTestError, epoch, matBin)
+    matError, matWeights, matBias = model.train_model(Inputs, Weirdness, Quality, matWeights, matBias, prevError, BaselineError, currentTestError, epoch, matBin, janMat)
     #print(time.time() - t0)
     prevError = np.average(np.abs(matError))
 
@@ -112,43 +114,50 @@ while epoch <= 20000:
         with open("Temp_Holder.txt", "w") as f:
             f.write("")
 
-        testData = Test(dataStart, dataEnd, matWeights, matBias)
+        testData = Test(matWeights, matBias)
         currentTestError = testData[8]
 
-        Weights = matWeights.flatten().tolist()
-        Bias = matBias.flatten().tolist()
+        #Weights = matWeights.flatten().tolist()
+        #Bias = matBias.flatten().tolist()
 
         print(f"Epoch: {epoch}")
         if currentTestError < bestError:
             # NEW BEST! Save and reset
             bestError = currentTestError
-            bestWeights = copy.deepcopy(Weights)
-            bestBias = copy.deepcopy(Bias)
+            matBestWeights = matWeights.copy()
+            matBestBias = matBias.copy()
             strikes = 0
 
             print(f"✓ New best: {currentTestError:.4f}")
 
         else:
             # Didn't beat best
+            if strikes == 0:
+                janMat = Janitor.Clean(janMat, matBestWeights, matBestBias, Inputs, Quality, matBin)
+                matWeights = matBestWeights.copy()
+                matBias = matBestBias.copy()
+
             if epoch > 100:
                 strikes += 1
             print(f"✗ No improvement: {currentTestError:.4f} (strike {strikes}/{patience})")
 
+
+
             if strikes >= patience:
-                Weights = copy.deepcopy(bestWeights)
-                Bias = copy.deepcopy(bestBias)
+                matWeights = matBestWeights.copy()
+                matBias = matBestBias.copy()
                 print(f"Early stopping! Restored best: {bestError:.4f}")
                 break
     epoch += 1
             
-model.save_weights(Weights)
-model.save_bias(Bias)
+model.save_weights(matWeights.flatten().tolist())
+model.save_bias(matBias.flatten().tolist())
 
 print("\n=== Training Complete ===")
-print(f"Final weights: {Weights}")
-print(f"Final bias: {Bias}")
+print(f"Final weights: {matWeights}")
+print(f"Final bias: {matBias}")
 
-Test(dataStart, dataEnd, Weights, Bias)
+Test(matBestWeights, matBestBias)
 
 log.Write_To_xlsx()
 log.Open_xlsm("ML_log.xlsx")

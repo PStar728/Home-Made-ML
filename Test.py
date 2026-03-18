@@ -1,34 +1,39 @@
+from pickle import GLOBAL
+
 from data import DataSet
 from model import predict
 from log import Calculate_Epoch_Data, Log_Tests
 import numpy as np
 
-TESTDATA = DataSet()
+QuizData = DataSet()
+TestData = DataSet()
+
 bins = [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25]
 
-def Define_Testing_Ranges(dataStart, dataEnd):
+TestData.load_from_csv("winequality-red.csv", 1400, 1599, False)
+QuizData.load_from_csv("winequality-red.csv", 1200, 1399, False)
 
-    #TESTDATA.load_from_csv("winequality-red.csv", 0, dataStart, False)
-    TESTDATA.load_from_csv("winequality-red.csv", dataEnd, None ,False)
+quizGrad = None
 
-def Test(dataStart: int, dataEnd: int, matWeight, matBias):
+def Test(matWeight, matBias):
 
-    if len(TESTDATA.samples) == 0:
-        Define_Testing_Ranges(dataStart, dataEnd)
+    quizData: np.ndarray = np.array([dp.inputs for dp in QuizData.samples])
+    quizData = quizData - quizData.mean(axis=0)
+    quizQuality: np.ndarray = np.array([dp.quality for dp in QuizData.samples])
 
-    testData: np.ndarray = np.array([dp.inputs for dp in TESTDATA.samples])
-    testData = testData - testData.mean(axis=0)
-    testQuality: np.ndarray = np.array([dp.quality for dp in TESTDATA.samples])
-
-    TestWeirdness: np.ndarray = np.array(TESTDATA.weirdness).reshape(-1, 1)
-    matTBin: np.ndarray = np.digitize(TestWeirdness.flatten(), bins)
+    quizWeirdness: np.ndarray = np.array(QuizData.weirdness).reshape(-1, 1)
+    matTBin: np.ndarray = np.digitize(quizWeirdness.flatten(), bins)
     matTBin = matTBin.reshape(-1, 1)
 
-    testErrors = predict(testData, testQuality, matWeight, matBias, matTBin)
+    quizErrors = predict(quizData, quizQuality, matWeight, matBias, matTBin)
 
-    #for point in TESTDATA.samples:
+    global quizGrad
+    quizGrad = ((quizData.T @ quizErrors) / quizData.shape[0])
+
+
+    #for point in QuizData.samples:
      #   testErrors.append(predict(point, matWeight, matBias))
 
-    testsLine = Calculate_Epoch_Data("Test", testErrors)
+    testsLine = Calculate_Epoch_Data("Test", quizErrors)
     Log_Tests(testsLine)
     return testsLine

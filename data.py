@@ -96,6 +96,12 @@ class DataSet:
                         inputs.append(sig_inv)
                     if 'cube' in transforms: inputs.append(val ** 3)
 
+                num_base = len(inputs)
+
+                for i in range(num_base):
+                    for j in range(i+1, num_base):
+                        inputs.append(inputs[i] * inputs[j])
+
                 quality = int(row['quality'])
                 #print(f"samples countin load: {len(self.samples)}")
 

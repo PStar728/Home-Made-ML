@@ -34,11 +34,11 @@ def load_weights(N_parameters, start=0.1):
 
     return [start] * N_parameters
 
-def save_bias(bias):
+def save_bias(bias: list):
     with open(bias_file, "w") as f:
         json.dump(bias, f)
 
-def save_weights(weights):
+def save_weights(weights: list):
     with open(weights_file, "w") as f:
         json.dump(weights, f)
 
@@ -140,7 +140,7 @@ def Get_Boost_Multiplier(percentage: float) -> float:
 
 
 
-def train_weights(matData: np.ndarray, matWeights: np.ndarray, matBoost: np.ndarray, matError: np.ndarray, Learning_Rate: float, Lambda: float) -> np.ndarray:
+def train_weights(matData: np.ndarray, matWeights: np.ndarray, matBoost: np.ndarray, matError: np.ndarray, Learning_Rate: float, Lambda: float, janMat: np.ndarray) -> np.ndarray:
     """
     matData: (n_samples, n_features)
     matError: (n_samples,1)
@@ -156,6 +156,8 @@ def train_weights(matData: np.ndarray, matWeights: np.ndarray, matBoost: np.ndar
     regL1: np.ndarray = (Lambda * Learning_Rate) * np.sign(matWeights)
 
     matWeights += errorUpdate - regL1
+
+    matWeights *= janMat
 
     '''
     for i, x in enumerate(matData.inputs):
@@ -192,7 +194,7 @@ def train_bias(matBias: np.ndarray, matError: np.ndarray, Learning_Rate: float, 
     #print("Bias: ", matBias)
     return matBias
 
-def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, epochNum: int, matBin: np.ndarray, Base_LR = .01):
+def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, epochNum: int, matBin: np.ndarray, janMat, Base_LR = .01):
     # predict done ... i think
     #Base LR used to be .005
     matError = predict(matData, matQuality, matWeights, matBias, matBin)
@@ -231,7 +233,7 @@ def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarr
     matBoost, boostedBin = Get_Boost_Mat(matBin, epochNum)
 
     #train weights done
-    matWeights = train_weights(matData, matWeights, matBoost, matError, Learning_Rate, Lambda)
+    matWeights = train_weights(matData, matWeights, matBoost, matError, Learning_Rate, Lambda, janMat)
     #bias done
     matBias = train_bias(matBias, matError, Learning_Rate, matWeights, boostedBin, matBin)
     return matError, matWeights, matBias
