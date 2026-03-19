@@ -146,7 +146,6 @@ while epoch <= 30000:
             print(f"✗ No improvement: {currentTestError:.4f} (strike {strikes}/{patience})")
 
 
-
             if strikes >= patience:
                 matWeights = matBestWeights.copy()
                 matBias = matBestBias.copy()
