@@ -8,6 +8,8 @@ import numpy as np
 
 # checks if epoch number == (1, 2, 5, 10, 20, 50...)
 def Display_Check(Epoch):
+    if Epoch % 5000 == 0:
+        return True
     while Epoch % 10 == 0:
         Epoch //= 10
         if (Epoch == 0):

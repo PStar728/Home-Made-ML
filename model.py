@@ -121,7 +121,7 @@ def Get_Boost_Mat(matBin: np.ndarray, epochNum: int) -> np.ndarray:
         if b == currentBoost:
             matBoost[i] = boostMult/count
         else :
-            matBoost[i] = (1-boostMult)/(1200-count) #number of points is hard coded here "1200"
+            matBoost[i] = (1-boostMult)/(len(matBin)-count) #number of points is hard coded here "1200"
 
     matBoost = matBoost / matBoost.mean()
 
@@ -194,7 +194,7 @@ def train_bias(matBias: np.ndarray, matError: np.ndarray, Learning_Rate: float, 
     #print("Bias: ", matBias)
     return matBias
 
-def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, epochNum: int, matBin: np.ndarray, janMat, Base_LR = .01):
+def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, epochNum: int, matBin: np.ndarray, janMat, Base_LR): #B_LR = 0.01
     # predict done ... i think
     #Base LR used to be .005
     matError = predict(matData, matQuality, matWeights, matBias, matBin)
