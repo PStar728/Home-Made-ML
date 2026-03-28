@@ -1,6 +1,6 @@
 import json
 
-with open("weights.json") as f:
+with open("MasterSave.json") as f:
     weights = json.load(f)
 
 # Get indices sorted by absolute value (smallest first)

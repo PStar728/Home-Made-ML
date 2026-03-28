@@ -121,7 +121,7 @@ def Write_To_txt(matWeight: np.ndarray, matBias: np.ndarray, Quality: np.ndarray
 """
 
 
-def Calculate_Epoch_Data(EpochNum: int, ErrorList: list) -> list:
+def Calculate_Epoch_Data(EpochNum: str, ErrorList: list) -> list:
     errors = np.abs(np.array(ErrorList))
 
     min_err = np.min(errors)

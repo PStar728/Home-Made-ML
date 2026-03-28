@@ -5,7 +5,7 @@ from unittest import case
 import numpy as np
 from openpyxl.descriptors.excel import Percentage
 
-weights_file = "weights.json"
+master_file = "MasterSave.json"
 bias_file = "bias.json"
 boundaries = [0, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, float('inf')]
 
@@ -19,28 +19,53 @@ def load_bias():
         bias = [5.5] * (len(boundaries) - 1)
     return bias
 
+def load_brain(numParameters, numNeurons, numOutputs, numBins):
+    W1 = load_saved_data(numParameters, numNeurons, "W1", 0.1)
+    W2 = load_saved_data(numNeurons, numOutputs, "W2", 0.1)
+    B1 = load_saved_data(1, numNeurons, "B1", 1)
+    B2 = load_saved_data(1, numBins, "B2", 5)
+    janMat = load_saved_data(numParameters, numNeurons, "janMat", 1)
+    return W1, W2, B1, B2, janMat
 
-def load_weights(N_parameters, start=0.1):
+def load_saved_data(N_Inputs: int, N_outputs: int, name: str, start):
+    Data = np.full((N_Inputs, N_outputs), start)
+    # line under makes each neron have a different starting point
+    # dont add until code that ensures they settle to different points works
+    #Data = Data + (np.arange(N_outputs) * 0.0001)
+
     try:
-        with open(weights_file) as f:
+        with open(master_file) as f:
 
-            loaded_weights = json.load(f)
-            if len(loaded_weights) == N_parameters:
-                #return loaded_weights
-                return [0.1] * N_parameters
+            master = json.load(f)
+            savedData = np.array(master[name])
+            if savedData.shape == (N_Inputs, N_outputs):
+                #Data = master[name]
+                return Data
 
     except (FileNotFoundError, json.JSONDecodeError):
-        return [0.0] * N_parameters
+        return Data
 
-    return [start] * N_parameters
+    return Data
 
 def save_bias(bias: list):
     with open(bias_file, "w") as f:
         json.dump(bias, f)
 
 def save_weights(weights: list):
-    with open(weights_file, "w") as f:
+    with open(master_file, "w") as f:
         json.dump(weights, f)
+
+def save_brain(W1: np.ndarray, W2: np.ndarray, B1: np.ndarray, B2: np.ndarray, janMat: np.ndarray):
+    master = {
+        "W1": W1.tolist(),
+        "B1": B1.tolist(),
+        "W2": W2.tolist(),
+        "matBias": B2.tolist(),
+        "janMat": janMat.tolist()
+    }
+
+    with open(master_file, "w") as f:
+        json.dump(master, f)
 
 def sigmoid(number):
     return 1 / (1 + math.exp(-number))
@@ -231,6 +256,29 @@ def train_model(matData: np.ndarray, Weirdness: np.ndarray, matQuality: np.ndarr
     Lambda = Calc_Lambda(prevError, testError)
 
     matBoost, boostedBin = Get_Boost_Mat(matBin, epochNum)
+
+    #train weights done
+    matWeights = train_weights(matData, matWeights, matBoost, matError, Learning_Rate, Lambda, janMat)
+    #bias done
+    matBias = train_bias(matBias, matError, Learning_Rate, matWeights, boostedBin, matBin)
+    return matError, matWeights, matBias
+
+
+def train_model_NN(matData: np.ndarray, matQuality: np.ndarray, matWeights: np.ndarray, matBias: np.ndarray, prevError: float, BaselineError: float, testError: float, epochNum: int, matBin: np.ndarray, janMat, Base_LR): #B_LR = 0.01
+    # predict done ... i think
+    #Base LR used to be .005
+
+
+    #Variable Definitions
+    Learning_Rate = Calc_Learning_Rate(prevError, BaselineError, Base_LR)
+    Lambda = Calc_Lambda(prevError, testError)
+    matBoost, boostedBin = Get_Boost_Mat(matBin, epochNum)
+
+
+
+    matError = predict(matData, matQuality, matWeights, matBias, matBin)
+
+
 
     #train weights done
     matWeights = train_weights(matData, matWeights, matBoost, matError, Learning_Rate, Lambda, janMat)

@@ -1,7 +1,7 @@
 from pickle import GLOBAL
 
 from data import DataSet
-from model import predict
+from modelNN import predict_all, get_blame
 from log import Calculate_Epoch_Data, Log_Tests
 import numpy as np
 
@@ -13,9 +13,7 @@ bins = [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25]
 TestData.load_from_csv("wine_shuffled.csv", 1400, 1599, False)
 QuizData.load_from_csv("wine_shuffled.csv", 1200, 1399, False)
 
-quizGrad = None
-
-def Test(matWeight, matBias):
+def Test(mW0, mW1, mB0, mB1):
 
     quizData: np.ndarray = np.array([dp.inputs for dp in QuizData.samples])
     quizData = quizData - quizData.mean(axis=0)
@@ -25,10 +23,10 @@ def Test(matWeight, matBias):
     matTBin: np.ndarray = np.digitize(quizWeirdness.flatten(), bins)
     matTBin = matTBin.reshape(-1, 1)
 
-    quizErrors = predict(quizData, quizQuality, matWeight, matBias, matTBin)
+    quizErrors, quizSig1 = predict_all(quizData, quizQuality, mW0, mW1, mB0, mB1, matTBin)
 
-    global quizGrad
-    quizGrad = ((quizData.T @ quizErrors) / quizData.shape[0])
+    #global quizGrad
+    #quizGrad = ((quizData.T @ quizErrors) / quizData.shape[0])
 
 
     #for point in QuizData.samples:
@@ -38,9 +36,7 @@ def Test(matWeight, matBias):
     Log_Tests(testsLine)
     return testsLine
 
-quizGrad = None
-
-def TestClean(matWeight, matBias):
+def TestClean(mW0, mW1, mB0, mB1):
 
     quizData: np.ndarray = np.array([dp.inputs for dp in QuizData.samples])
     quizData = quizData - quizData.mean(axis=0)
@@ -49,26 +45,18 @@ def TestClean(matWeight, matBias):
     quizWeirdness: np.ndarray = np.array(QuizData.weirdness).reshape(-1, 1)
     matTBin: np.ndarray = np.digitize(quizWeirdness.flatten(), bins)
     matTBin = matTBin.reshape(-1, 1)
-
-    quizErrors = predict(quizData, quizQuality, matWeight, matBias, matTBin)
 
     counts = np.bincount(matTBin.flatten(), minlength=13)
     member_weights = np.where(counts > 0, 1.0 / counts, 0)
     equalizer = member_weights[matTBin.flatten()].reshape(-1, 1)
 
-    return  (quizData.T @ (quizErrors * equalizer))
-    global quizGrad
-    quizGrad = ((quizData.T @ quizErrors) / quizData.shape[0])
+    quizErrors, quizSigL1 = predict_all(quizData, quizQuality, mW0, mW1, mB0, mB1, matTBin)
+    quizGrad0 = quizData.T @ get_blame(mW1, quizSigL1, quizErrors * equalizer)
+    quizGrad1 = quizSigL1.T @ quizErrors / quizData.shape[0]
 
+    return  quizGrad0, quizGrad1, quizSigL1
 
-    #for point in QuizData.samples:
-     #   testErrors.append(predict(point, matWeight, matBias))
-
-    testsLine = Calculate_Epoch_Data("Test", quizErrors)
-    Log_Tests(testsLine)
-    return testsLine
-
-def FinalTest(matWeight, matBias):
+def FinalTest(mW0, mW1, mB0, mB1):
 
     testData: np.ndarray = np.array([dp.inputs for dp in TestData.samples])
     testData = testData - testData.mean(axis=0)
@@ -78,7 +66,7 @@ def FinalTest(matWeight, matBias):
     matTBin: np.ndarray = np.digitize(testWeirdness.flatten(), bins)
     matTBin = matTBin.reshape(-1, 1)
 
-    testErrors = predict(testData, testQuality, matWeight, matBias, matTBin)
+    testErrors, testSig1 = predict_all(testData, testQuality, mW0, mW1, mB0, mB1, matTBin)
 
     testsLine = Calculate_Epoch_Data("Final Test", testErrors)
     Log_Tests(testsLine)

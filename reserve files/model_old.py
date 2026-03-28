@@ -1,7 +1,7 @@
 import math
 import json
 
-weights_file = "weights.json"
+weights_file = "MasterSave.json"
 weights = {
     'fixed acidity': 0.1,
     'volatile acidity': 0.1,
