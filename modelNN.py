@@ -14,8 +14,8 @@ def load_brain(numParameters, numNeurons, numOutputs, numBins):
     W1 = load_saved_data(numNeurons, numOutputs, "W1", 0.1)
     B0 = load_saved_data(1, numNeurons, "B0", 0.0)
     B1 = load_saved_data(1, numBins, "B1", 5.0)
-    janMat0 = load_saved_data(numParameters, numNeurons, "janMat0", 1)
-    janMat1 = load_saved_data(numNeurons, numOutputs, "janMat1", 1)
+    janMat0 = load_saved_data(numParameters, numNeurons, "janMat0", 1.0)
+    janMat1 = load_saved_data(numNeurons, numOutputs, "janMat1", 1.0)
     return W0, W1, B0, B1, janMat0, janMat1
 
 def load_saved_data(N_Inputs: int, N_outputs: int, name: str, start):
@@ -242,7 +242,9 @@ def train_weightL0(matData: np.ndarray, mW0: np.ndarray, matBoost: np.ndarray, m
 
     mW0 += errorUpdate - regL1
 
+
     mW0 *= janMat1
+
 
     '''
     for i, x in enumerate(matData.inputs):
@@ -277,21 +279,56 @@ def train_biasL1(mB1: np.ndarray, matError: np.ndarray, Learning_Rate: float, mW
     return mB1
 
 def get_blame(mW1: np.ndarray, matSig1: np.ndarray, matError: np.ndarray) -> np.ndarray:
-    i = (np.arange(matSig1.shape[1]) / 2) - 3.5
+    errorSign = np.sign(matError)
+    errorSafe = (np.abs(matError) + 1e-10)
 
-    exponents = -np.sign(i) * (2 ** (np.abs(i) - 0.5))
+    i = np.arange(16)
+    exponents, groupMasks = get_blame_exponets(16, matError)
 
-    safe_error = np.abs(matError) + 1e-7
+    err_pos = (matError > 0)
+    err_neg = (matError < 0)
 
-    is_even_neuron = (np.arange(16) % 2 == 0).reshape(1, -1)
-    mask = (is_even_neuron == (matError > 0))
+    mask = groupMasks[0] | groupMasks[1] | (groupMasks[2] & err_pos) | (groupMasks[3] & err_neg)
 
-    blame = (mW1.T * matSig1) * (matError * (safe_error ** exponents)) * mask
+    # 5. Synthesize safely
+    blame = (mW1.T * matSig1) * (errorSafe ** exponents) * mask
+    blame *= errorSign
+
     #print(f"matSig1 shape: {matSig1.shape}")
     #print(f"matError shape: {matError.shape}")
     #print(f"mW1 shape: {mW1.shape}")
     #print(f"blame shape: {blame.shape}")
-    return sigmoid(blame) - 0.5
+    return blame#sigmoid(blame) - 0.5
+
+def get_blame_exponets(neurons, errors):
+    maxE = np.max(np.abs(errors))
+    minE = np.min(np.abs(errors))
+    targetHighValue  = 500
+    targetLowValue = 50
+    minPowStart = (np.log(targetHighValue) / np.log(minE))
+    minPowEnd = (np.log(targetLowValue) / np.log(minE))
+    maxPowStart = (np.log(targetLowValue)/np.log(maxE))
+    maxPowEnd = (np.log(targetHighValue)/np.log(maxE))
+
+    i = np.arange(neurons)
+    exponents = np.zeros(neurons)
+
+    changepoints = (i.size * 3/16, i.size * 6/16, i.size * 11/16)
+
+    foundation = (minPowStart, minPowEnd, 0, 1.0, maxPowStart, maxPowEnd, maxPowStart, maxPowEnd)
+
+    groupMasks = [i <= changepoints[0],
+                  (i > changepoints[0]) & (i <= changepoints[1]),
+                  (i > changepoints[1]) & (i <= changepoints[2]),
+                  i > changepoints[2]]
+
+    # this is just a line from foundation's start to the end for that group
+    exponents[groupMasks[0]] = foundation[0] + ((i[groupMasks[0]] - 0) / (i[groupMasks[0]].size) - 1) * (foundation[1] - foundation[0])
+    exponents[groupMasks[1]] = foundation[2] + ((i[groupMasks[1]] - changepoints[0]) / (i[groupMasks[1]].size) - 1) * (foundation[3] - foundation[2])
+    exponents[groupMasks[2]] = foundation[4] + ((i[groupMasks[2]] - changepoints[1]) / (i[groupMasks[2]].size) - 1) * (foundation[5] - foundation[4])
+    exponents[groupMasks[3]] = foundation[6] + ((i[groupMasks[3]] - changepoints[2]) / (i[groupMasks[3]].size) - 1) * (foundation[7] - foundation[6])
+
+    return exponents, groupMasks
 
 
 def predict_all(matData: np.ndarray, matQuality: np.ndarray, mW0: np.ndarray, mW1: np.ndarray, mB0: np.ndarray, mB1: np.ndarray, matBin: np.ndarray) -> np.ndarray:
